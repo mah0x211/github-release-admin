@@ -1,6 +1,7 @@
 package github
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -134,6 +135,32 @@ func (c *Client) Delete(endpoint string) (*http.Response, error) {
 	return c.request("DELETE", endpoint)
 }
 
+func (c *Client) upload(method, endpoint string, body io.Reader, size int64, mime string) (*http.Response, error) {
+	u, err := resolveURL(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endpoint %w", err)
+	}
+
+	c.Body = body
+	req, err := c.createRequest(method, c.uploadURL+u)
+	if err != nil {
+		return nil, err
+	}
+	req.ContentLength = size
+	req.Header.Set("Content-Type", mime)
+	req.Header.Set("Expect", "100-continue")
+
+	if err = c.log(req, false); err != nil {
+		return nil, err
+	}
+
+	return http.DefaultClient.Do(req)
+}
+
+func (c *Client) PostUpload(endpoint string, body io.Reader, size int64, mime string) (*http.Response, error) {
+	return c.upload("POST", endpoint, body, size, mime)
+}
+
 type Branch struct {
 	Name      string `json:"name"`
 	Protected bool   `json:"protected"`
@@ -183,17 +210,17 @@ type Asset struct {
 }
 
 type Release struct {
-	ID              int     `json:"id,omitempty"`
+	ID              int     `json:"id"`
 	Draft           bool    `json:"draft"`
 	PreRelease      bool    `json:"prerelease"`
 	Name            string  `json:"name"`
 	Body            string  `json:"body"`
 	TagName         string  `json:"tag_name"`
 	TargetCommitish string  `json:"target_commitish"`
-	HtmlURL         string  `json:"html_url"`
-	CreatedAt       string  `json:"created_at"`
-	PublishedAt     string  `json:"published_at"`
-	Author          Author  `json:"author"`
+	HtmlURL         string  `json:"html_url,omitempty"`
+	CreatedAt       string  `json:"created_at,omitempty"`
+	PublishedAt     string  `json:"published_at,omitempty"`
+	Author          Author  `json:"author,omitempty"`
 	Assets          []Asset `json:"assets,omitempty"`
 }
 
@@ -252,5 +279,80 @@ func (c *Client) ListReleases(nitem, page int) (*ListRelease, error) {
 			err = fmt.Errorf("%s", b)
 		}
 		return nil, err
+	}
+}
+
+func (c *Client) CreateRelease(tagName, targetCommitish, name, body string, draft, prerelease bool) (*Release, error) {
+	b, err := json.Marshal(&Release{
+		TagName:         tagName,
+		TargetCommitish: targetCommitish,
+		Name:            name,
+		Body:            body,
+		Draft:           draft,
+		PreRelease:      prerelease,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	c.Body = bytes.NewBuffer(b)
+	rsp, err := c.Post("/releases")
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusCreated:
+		release := &Release{}
+		if err := json.NewDecoder(rsp.Body).Decode(&release); err != nil {
+			return nil, err
+		}
+		return release, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
+func (c *Client) DeleteRelease(id int) error {
+	rsp, err := c.Delete(fmt.Sprintf("/releases/%d", id))
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	if rsp.StatusCode != http.StatusNoContent {
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (c *Client) UploadAsset(id int, name string, body io.Reader, size int64, mime string) error {
+	rsp, err := c.PostUpload(fmt.Sprintf("/%d/assets?name=%s", id, name), body, size, mime)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusCreated:
+		return nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
 	}
 }
