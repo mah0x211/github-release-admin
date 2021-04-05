@@ -14,13 +14,15 @@ func parseCommand(c *github.Client, args []string) {
 		cmd.Usage(1)
 	}
 
-	arg := args[0]
-	switch arg {
+	switch args[0] {
 	case "list":
 		cmd.List(c, args[1:])
 
+	case "create":
+		cmd.Create(c, args[1:])
+
 	default:
-		log.Errorf("invalid command %q", arg)
+		log.Errorf("invalid command %q", args[0])
 		cmd.Usage(1)
 	}
 }

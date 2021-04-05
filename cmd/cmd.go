@@ -3,12 +3,14 @@ package cmd
 import (
 	"os"
 
+	"github-release-admin/cmd/create"
 	"github-release-admin/cmd/list"
 	"github-release-admin/log"
 )
 
 var (
-	List = list.Run
+	List   = list.Run
+	Create = create.Run
 )
 
 func Usage(exitCode int) {
@@ -28,6 +30,7 @@ Options:
 
 Commands:
     list                list releases.
+    create              create release and upload asset files.
 
 Environment Variables:
     GITHUB_TOKEN        require for private repository
@@ -43,6 +46,9 @@ func Help(args []string) {
 	switch args[0] {
 	case "list":
 		list.Usage(0)
+
+	case "create":
+		create.Usage(0)
 
 	default:
 		log.Errorf("invalid command: %q", args[0])
