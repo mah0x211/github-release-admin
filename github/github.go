@@ -336,3 +336,23 @@ func (c *Client) DeleteRelease(id int) error {
 
 	return nil
 }
+
+func (c *Client) UploadAsset(id int, name string, body io.Reader, size int64, mime string) error {
+	rsp, err := c.PostUpload(fmt.Sprintf("/%d/assets?name=%s", id, name), body, size, mime)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusCreated:
+		return nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
+	}
+}
