@@ -135,6 +135,32 @@ func (c *Client) Delete(endpoint string) (*http.Response, error) {
 	return c.request("DELETE", endpoint)
 }
 
+func (c *Client) upload(method, endpoint string, body io.Reader, size int64, mime string) (*http.Response, error) {
+	u, err := resolveURL(endpoint)
+	if err != nil {
+		return nil, fmt.Errorf("invalid endpoint %w", err)
+	}
+
+	c.Body = body
+	req, err := c.createRequest(method, c.uploadURL+u)
+	if err != nil {
+		return nil, err
+	}
+	req.ContentLength = size
+	req.Header.Set("Content-Type", mime)
+	req.Header.Set("Expect", "100-continue")
+
+	if err = c.log(req, false); err != nil {
+		return nil, err
+	}
+
+	return http.DefaultClient.Do(req)
+}
+
+func (c *Client) PostUpload(endpoint string, body io.Reader, size int64, mime string) (*http.Response, error) {
+	return c.upload("POST", endpoint, body, size, mime)
+}
+
 type Branch struct {
 	Name      string `json:"name"`
 	Protected bool   `json:"protected"`
