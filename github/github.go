@@ -292,3 +292,21 @@ func (c *Client) CreateRelease(tagName, targetCommitish, name, body string, draf
 		return nil, err
 	}
 }
+
+func (c *Client) DeleteRelease(id int) error {
+	rsp, err := c.Delete(fmt.Sprintf("/releases/%d", id))
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	if rsp.StatusCode != http.StatusNoContent {
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
+	}
+
+	return nil
+}
