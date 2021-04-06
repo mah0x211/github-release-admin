@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github-release-admin/getopt"
 	"github-release-admin/github"
 	"github-release-admin/log"
 	"github-release-admin/readdir"
@@ -58,77 +59,72 @@ type Option struct {
 	DryRun          bool
 }
 
-func parseOption(args []string) *Option {
-	o := &Option{
-		Draft:      true,
-		PreRelease: true,
-		DryRun:     true,
-	}
-
-	for _, arg := range args {
-		arg = strings.TrimSpace(arg)
-		if strings.HasPrefix(arg, "--") {
-			var v string
-			if arr := strings.SplitN(arg, "=", 2); len(arr) == 2 {
-				arg = arr[0]
-				v = strings.TrimSpace(arr[1])
-			}
-
-			switch arg {
-			case "--title":
-				o.Title = v
-
-			case "--body":
-				o.Body = v
-
-			case "--dir":
-				o.Dirname = v
-
-			case "--posix":
-				o.AsPosix = true
-				fallthrough
-			case "--regex":
-				o.AsRegex = true
-
-			case "--no-draft":
-				o.Draft = false
-
-			case "--no-prerelease":
-				o.PreRelease = false
-
-			case "--no-dry-run":
-				o.DryRun = false
-
-			default:
-				log.Errorf("unknown option %q", arg)
-				Usage(1)
-			}
-			continue
-		}
-
-		if o.TagName == "" {
-			// parse <tag@target>
-			arr := strings.Split(arg, "@")
-			if len(arr) != 2 || arr[0] == "" || arr[1] == "" {
-				log.Error("invalid <tag@target> arguments")
-				Usage(1)
-			}
-			o.TagName = arr[0]
-			o.TargetCommitish = arr[1]
-		} else if o.Filename == "" {
-			// parse <filename>
-			if arg == "" {
-				log.Error("invalid <filename> arguments")
-				Usage(1)
-			}
-			o.Filename = arg
-		} else {
-			log.Error("invalid arguments")
+func (o *Option) SetArg(arg string) bool {
+	if o.TagName == "" {
+		// parse <tag@target>
+		arr := strings.Split(arg, "@")
+		if len(arr) != 2 || arr[0] == "" || arr[1] == "" {
+			log.Error("invalid <tag@target> arguments")
 			Usage(1)
 		}
+		o.TagName = arr[0]
+		o.TargetCommitish = arr[1]
+	} else if o.Filename == "" {
+		// parse <filename>
+		if arg == "" {
+			log.Error("invalid <filename> arguments")
+			Usage(1)
+		}
+		o.Filename = arg
+	} else {
+		log.Error("invalid arguments")
+		Usage(1)
 	}
 
-	return o
+	return true
+}
+
+func (o *Option) SetFlag(arg string) bool {
+	switch arg {
+	case "--posix":
+		o.AsPosix = true
+		fallthrough
+	case "--regex":
+		o.AsRegex = true
+
+	case "--no-draft":
+		o.Draft = false
+
+	case "--no-prerelease":
+		o.PreRelease = false
+
+	case "--no-dry-run":
+		o.DryRun = false
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		Usage(1)
+	}
+
+	return true
+}
+
+func (o *Option) SetKeyValue(k, v, arg string) bool {
+	switch k {
+	case "--title":
+		o.Title = v
+
+	case "--body":
+		o.Body = v
+
+	case "--dir":
+		o.Dirname = v
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		Usage(1)
+	}
+	return true
 }
 
 func upload(c *github.Client, o *Option, id int, pathname string) error {
@@ -205,7 +201,13 @@ func handleRelease(c *github.Client, o *Option, r *readdir.Reader) {
 }
 
 func Run(c *github.Client, args []string) {
-	o := parseOption(args)
+	o := &Option{
+		Draft:      true,
+		PreRelease: true,
+		DryRun:     true,
+	}
+	getopt.Parse(o, args)
+
 	if o.TagName == "" || o.Filename == "" {
 		log.Error("invalid arguments")
 		Usage(1)

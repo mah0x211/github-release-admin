@@ -3,8 +3,8 @@ package list
 import (
 	"encoding/json"
 	"os"
-	"strings"
 
+	"github-release-admin/getopt"
 	"github-release-admin/github"
 	"github-release-admin/log"
 )
@@ -51,47 +51,40 @@ type Option struct {
 	Branch       string
 }
 
-func parseOption(args []string) *Option {
-	o := &Option{}
-
-	for _, arg := range args {
-		if strings.HasPrefix(arg, "--") {
-			var v string
-			if arr := strings.SplitN(arg, "=", 2); len(arr) == 2 {
-				arg = arr[0]
-				v = strings.TrimSpace(arr[1])
-			}
-
-			switch arg {
-			case "--branch-exists":
-				o.BranchExists = true
-
-			case "--branch":
-				o.Branch = v
-
-			default:
-				log.Errorf("unknown option %q", arg)
-				Usage(1)
-			}
-			continue
-		}
-
-		if o.Arg != "" {
-			log.Error("invalid arguments")
-			Usage(1)
-		}
-
-		switch arg {
-		case "draft":
-		case "prerelease":
-		default:
-			log.Error("invalid arguments")
-			Usage(1)
-		}
-		o.Arg = arg
+func (o *Option) SetArg(arg string) bool {
+	switch arg {
+	case "draft":
+	case "prerelease":
+	default:
+		log.Error("invalid arguments")
+		Usage(1)
 	}
+	o.Arg = arg
+	return true
+}
 
-	return o
+func (o *Option) SetFlag(arg string) bool {
+	switch arg {
+	case "--branch-exists":
+		o.BranchExists = true
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		Usage(1)
+	}
+	return true
+}
+
+func (o *Option) SetKeyValue(k, v, arg string) bool {
+	switch k {
+	case "--branch":
+		o.Branch = v
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		Usage(1)
+	}
+	return true
 }
 
 func display(c *github.Client, o *Option, v *github.Release) {
@@ -138,7 +131,9 @@ func handleDraft(c *github.Client, o *Option) {
 }
 
 func Run(c *github.Client, args []string) {
-	o := parseOption(args)
+	o := &Option{}
+	getopt.Parse(o, args)
+
 	switch o.Arg {
 	case "":
 		handleRelease(c, o)
