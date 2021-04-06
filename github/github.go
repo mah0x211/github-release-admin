@@ -24,6 +24,28 @@ type Client struct {
 	Body       io.Reader
 }
 
+const GITHUB_API_URL = "https://api.github.com"
+
+func getGitHubAPIURL() (string, error) {
+	// use GITHUB_API_URL if define
+	if s := strings.TrimSpace(os.Getenv("GITHUB_API_URL")); s != "" {
+		u, err := url.Parse(s)
+		if err != nil {
+			return "", fmt.Errorf("invalid GITHUB_API_URL environment variable: %w", err)
+		} else if u.Path == "/" {
+			u.Path = ""
+		}
+
+		if u.Scheme == "" || u.Host == "" || u.Path != "" ||
+			u.RawQuery != "" || u.Fragment != "" {
+			return "", fmt.Errorf("invalid GITHUB_API_URL environment variable: invalid url")
+		}
+		return u.String(), nil
+	}
+
+	return GITHUB_API_URL, nil
+}
+
 var ReOwnerName = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
 var ReRepoName = regexp.MustCompile(`^[\w-][\w.-]*$`)
 
@@ -46,9 +68,14 @@ func New(repo string) (*Client, error) {
 		return nil, fmt.Errorf("invalid repo name %q", repo)
 	}
 
+	// use GITHUB_API_URL if define
+	baseURL, err := getGitHubAPIURL()
+	if err != nil {
+		return nil, err
+	}
+
 	c := &Client{
-		baseURL: "https://api.github.com/repos/" + repo,
-		// uploadURL: "http://127.0.0.1:10080/",
+		baseURL:   baseURL + "/repos/" + repo,
 		uploadURL: "https://uploads.github.com/repos/" + repo + "/releases",
 		baseHeader: http.Header{
 			"Accept": {"application/vnd.github.v3+json"},
