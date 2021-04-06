@@ -24,14 +24,6 @@ type Client struct {
 	Body       io.Reader
 }
 
-func resolveURL(s string) (string, error) {
-	u, err := url.Parse(s)
-	if err != nil {
-		return "", err
-	}
-	return u.ResolveReference(&url.URL{}).String(), nil
-}
-
 var ReOwnerName = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
 var ReRepoName = regexp.MustCompile(`^[\w-][\w.-]*$`)
 
@@ -107,8 +99,25 @@ func (c *Client) createRequest(method, url string) (*http.Request, error) {
 	return req, nil
 }
 
+var ReMultipleSlashes = regexp.MustCompile("/+")
+
+func resolveEndpoint(s string) (string, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return "", fmt.Errorf("invalid endpoint %w", err)
+	}
+
+	u = u.ResolveReference(&url.URL{})
+	if u.User != nil || u.Scheme != "" || u.Host != "" || u.Fragment != "" {
+		return "", fmt.Errorf("invalid endpoint %q", s)
+	}
+
+	u.Path = ReMultipleSlashes.ReplaceAllString(u.Path, "/")
+	return u.String(), nil
+}
+
 func (c *Client) request(method, endpoint string) (*http.Response, error) {
-	u, err := resolveURL(endpoint)
+	u, err := resolveEndpoint(endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -136,9 +145,9 @@ func (c *Client) Delete(endpoint string) (*http.Response, error) {
 }
 
 func (c *Client) upload(method, endpoint string, body io.Reader, size int64, mime string) (*http.Response, error) {
-	u, err := resolveURL(endpoint)
+	u, err := resolveEndpoint(endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("invalid endpoint %w", err)
+		return nil, err
 	}
 
 	c.Body = body
