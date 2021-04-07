@@ -392,3 +392,31 @@ func (c *Client) UploadAsset(id int, name string, body io.Reader, size int64, mi
 		return err
 	}
 }
+
+func (c *Client) GetRelease(id int) (*Release, error) {
+	rsp, err := c.Get(fmt.Sprintf("/releases/%d", id))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusNotFound:
+		return nil, nil
+
+	case http.StatusOK:
+		release := &Release{}
+		if err := json.NewDecoder(rsp.Body).Decode(&release); err != nil {
+			return nil, err
+		}
+		return release, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
