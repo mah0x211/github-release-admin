@@ -229,6 +229,26 @@ func (c *Client) GetBranch(name string) (*Branch, error) {
 	}
 }
 
+func (c *Client) DeleteTag(tag string) error {
+	rsp, err := c.Delete(fmt.Sprintf("/git/refs/tags/%s", tag))
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusNoContent, http.StatusUnprocessableEntity:
+		return nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
+	}
+}
+
 type Author struct {
 	Login     string `json:"login"`
 	ID        int    `json:"id"`
@@ -390,5 +410,59 @@ func (c *Client) UploadAsset(id int, name string, body io.Reader, size int64, mi
 			err = fmt.Errorf("%s", b)
 		}
 		return err
+	}
+}
+
+func (c *Client) GetRelease(id int) (*Release, error) {
+	rsp, err := c.Get(fmt.Sprintf("/releases/%d", id))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusNotFound:
+		return nil, nil
+
+	case http.StatusOK:
+		release := &Release{}
+		if err := json.NewDecoder(rsp.Body).Decode(&release); err != nil {
+			return nil, err
+		}
+		return release, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
+func (c *Client) GetReleaseByTagName(tag string) (*Release, error) {
+	rsp, err := c.Get(fmt.Sprintf("/releases/tags/%s", tag))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusNotFound:
+		return nil, nil
+
+	case http.StatusOK:
+		release := &Release{}
+		if err := json.NewDecoder(rsp.Body).Decode(&release); err != nil {
+			return nil, err
+		}
+		return release, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
 	}
 }

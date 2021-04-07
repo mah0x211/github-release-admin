@@ -4,6 +4,7 @@ import (
 	"os"
 
 	"github-release-admin/cmd/create"
+	"github-release-admin/cmd/delete"
 	"github-release-admin/cmd/list"
 	"github-release-admin/log"
 )
@@ -11,6 +12,7 @@ import (
 var (
 	List   = list.Run
 	Create = create.Run
+	Delete = delete.Run
 )
 
 func Usage(exitCode int) {
@@ -31,6 +33,7 @@ Options:
 Commands:
     list                list releases.
     create              create release and upload asset files.
+	delete              delete releases.
 
 Environment Variables:
     GITHUB_TOKEN        require for private repository
@@ -49,6 +52,9 @@ func Help(args []string) {
 
 	case "create":
 		create.Usage(0)
+
+	case "delete":
+		delete.Usage(0)
 
 	default:
 		log.Errorf("invalid command: %q", args[0])

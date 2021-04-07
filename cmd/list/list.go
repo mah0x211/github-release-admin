@@ -46,20 +46,13 @@ Options:
 }
 
 type Option struct {
-	Arg          string
 	BranchExists bool
 	Branch       string
 }
 
 func (o *Option) SetArg(arg string) bool {
-	switch arg {
-	case "draft":
-	case "prerelease":
-	default:
-		log.Error("invalid arguments")
-		Usage(1)
-	}
-	o.Arg = arg
+	log.Error("invalid arguments")
+	Usage(1)
 	return true
 }
 
@@ -132,21 +125,22 @@ func handleDraft(c *github.Client, o *Option) {
 
 func Run(c *github.Client, args []string) {
 	o := &Option{}
-	getopt.Parse(o, args)
+	arg := ""
+	if len(args) > 0 {
+		arg = args[0]
+	}
 
-	switch o.Arg {
-	case "":
-		handleRelease(c, o)
-
+	switch arg {
 	case "draft":
+		getopt.Parse(o, args[1:])
 		handleDraft(c, o)
 
 	case "prerelease":
+		getopt.Parse(o, args[1:])
 		handlePreRelease(c, o)
 
 	default:
-		log.Errorf("invalid arguments: %v", args)
-		Usage(1)
+		getopt.Parse(o, args)
+		handleRelease(c, o)
 	}
-
 }

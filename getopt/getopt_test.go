@@ -27,6 +27,7 @@ func (o *TestOption) SetFlag(v string) bool {
 	}
 	return o.nstop == 0 || o.count < o.nstop
 }
+
 func (o *TestOption) SetKeyValue(k, v, arg string) bool {
 	if o.nstop == 0 || o.count < o.nstop {
 		o.argv["kv"] = append(o.argv["kv"], arg)
