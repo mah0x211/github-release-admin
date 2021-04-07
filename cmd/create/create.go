@@ -186,7 +186,7 @@ func handleRelease(c *github.Client, o *Option, r *readdir.Reader) {
 			log.Errorf("failed to upload %q: %v", pathname, err)
 			if !o.DryRun {
 				if err = c.DeleteRelease(rel.ID); err != nil {
-					log.Fatal("failed to delete release")
+					log.Fatalf("failed to delete release: %v", err)
 				}
 			}
 			break
@@ -195,7 +195,7 @@ func handleRelease(c *github.Client, o *Option, r *readdir.Reader) {
 
 	if o.DryRun {
 		if err = c.DeleteRelease(rel.ID); err != nil {
-			log.Fatal("failed to delete release")
+			log.Fatalf("failed to delete release: %v", err)
 		}
 	}
 }
