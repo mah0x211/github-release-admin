@@ -229,6 +229,26 @@ func (c *Client) GetBranch(name string) (*Branch, error) {
 	}
 }
 
+func (c *Client) DeleteTag(tag string) error {
+	rsp, err := c.Delete(fmt.Sprintf("/git/refs/tags/%s", tag))
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusNoContent, http.StatusUnprocessableEntity:
+		return nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
+	}
+}
+
 type Author struct {
 	Login     string `json:"login"`
 	ID        int    `json:"id"`
