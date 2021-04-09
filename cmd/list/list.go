@@ -28,19 +28,19 @@ func Usage(exitcode int) {
 List releases
 
 Usage:
-    list [--branch-exist] [--branch=<branch>]
-    list draft [--branch-exist] [--branch=<branch>]
-    list prerelease [--branch-exist] [--branch=<branch>]
+    list [--branch-exists] [--branch=<branch>]
+    list draft [--branch-exists] [--branch=<branch>]
+    list prerelease [--branch-exists] [--branch=<branch>]
 
 Arguments:
-    draft                    lists only the draft releases.
-    prelease                 lists only the pre-releases.
+    draft                lists only the draft releases.
+    prelease             lists only the pre-releases.
 
 Options:
-    --branch-exists          lists only the releases associated with the branch
-                             that exist.
-    --branch=<branch>        lists only the releases associated with the
-                             specified branch.
+    --branch-exists      lists only the releases associated with the branch
+                         that exist.
+    --branch=<branch>    lists only the releases associated with the
+                         specified branch.
 `)
 	os.Exit(exitcode)
 }
