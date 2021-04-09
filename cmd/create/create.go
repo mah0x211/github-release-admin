@@ -21,7 +21,7 @@ func Usage(code int) {
 Create release and upload asset files.
 
 Usage:
-    create <tag>@<target> <filename>
+    create <tag>[@<target>] <filename>
            [--title=<title>] [--body=<body>]
            [--dir=<path/to/dir>] [--regex] [--posix]
            [--no-draft] [--no-prerelease] [--no-dry-run]
@@ -59,23 +59,39 @@ type Option struct {
 	DryRun          bool
 }
 
+func isNotEmptyString(s string) bool {
+	return strings.TrimSpace(s) != ""
+}
+
 func (o *Option) SetArg(arg string) bool {
 	if o.TagName == "" {
-		// parse <tag@target>
+		// parse <tag>[@<target>]
 		arr := strings.Split(arg, "@")
-		if len(arr) != 2 || arr[0] == "" || arr[1] == "" {
-			log.Error("invalid <tag@target> arguments")
-			Usage(1)
+		switch len(arr) {
+		case 1:
+			if isNotEmptyString(arr[0]) {
+				o.TagName = arr[0]
+				return true
+			}
+
+		case 2:
+			if isNotEmptyString(arr[0]) && isNotEmptyString(arr[1]) {
+				o.TagName = arr[0]
+				o.TargetCommitish = arr[1]
+				return true
+			}
 		}
-		o.TagName = arr[0]
-		o.TargetCommitish = arr[1]
+		log.Error("invalid <tag>[@<target>] arguments")
+		Usage(1)
+
 	} else if o.Filename == "" {
 		// parse <filename>
-		if arg == "" {
-			log.Error("invalid <filename> arguments")
-			Usage(1)
+		if isNotEmptyString(arg) {
+			o.Filename = arg
+			return true
 		}
-		o.Filename = arg
+		log.Error("invalid <filename> arguments")
+		Usage(1)
 	} else {
 		log.Error("invalid arguments")
 		Usage(1)
@@ -192,12 +208,6 @@ func handleRelease(c *github.Client, o *Option, r *readdir.Reader) {
 			break
 		}
 	}
-
-	if o.DryRun {
-		if err = c.DeleteRelease(rel.ID); err != nil {
-			log.Fatalf("failed to delete release: %v", err)
-		}
-	}
 }
 
 func Run(c *github.Client, args []string) {
@@ -227,4 +237,5 @@ func Run(c *github.Client, args []string) {
 	}
 
 	handleRelease(c, o, readdir.New(o.Dirname, o.Filename, re))
+	log.Print("OK")
 }
