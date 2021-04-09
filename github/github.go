@@ -259,10 +259,17 @@ type Author struct {
 }
 
 type Asset struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	ContentType string `json:"content_type"`
-	Size        int    `json:"size"`
+	ID                 int    `json:"id"`
+	Name               string `json:"name"`
+	Label              string `json:"label"`
+	ContentType        string `json:"content_type"`
+	Size               int    `json:"size"`
+	URL                string `json:"url"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	DownloadCount      int    `json:"download_count"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
+	Uploader           Author `json:"uploader"`
 }
 
 type Release struct {
