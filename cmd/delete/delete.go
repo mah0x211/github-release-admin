@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github-release-admin/getopt"
 	"github-release-admin/github"
@@ -19,8 +20,8 @@ Delete release.
 
 Usage:
     delete <release-id> [--no-dry-run]
-    delete by-tag-name <tag> [--regex] [--posix] [--target=<target>]
-           [--draft] [--prerelease] [--no-dry-run]
+    delete by-tag <tag> [--regex] [--posix] [--target=<target>] [--draft]
+           [--prerelease] [--no-dry-run]
 
 Arguments:
     <release-id>        delete a release with the specified id. (greater than 0)
@@ -37,8 +38,11 @@ Options:
 	osExit(1)
 }
 
-type OptionByTag struct {
-	ByTag           bool
+func isEmptyString(s string) bool {
+	return strings.TrimSpace(s) == ""
+}
+
+type TagOption struct {
 	TagName         string
 	TargetCommitish string
 	AsRegex         bool
@@ -48,13 +52,12 @@ type OptionByTag struct {
 	NoDryRun        bool
 }
 
-func (o *OptionByTag) SetArg(arg string) bool {
+func (o *TagOption) SetArg(arg string) bool {
 	if o.TagName != "" {
 		// <tag> has already passed
 		log.Error("invalid arguments")
 		Usage(1)
-
-	} else if arg == "" {
+	} else if isEmptyString(arg) {
 		log.Error("invalid <tag> argument")
 		Usage(1)
 	}
@@ -62,7 +65,7 @@ func (o *OptionByTag) SetArg(arg string) bool {
 	return true
 }
 
-func (o *OptionByTag) SetFlag(arg string) bool {
+func (o *TagOption) SetFlag(arg string) bool {
 	switch arg {
 	case "--posix":
 		o.AsPosix = true
@@ -87,7 +90,7 @@ func (o *OptionByTag) SetFlag(arg string) bool {
 	return true
 }
 
-func (o *OptionByTag) SetKeyValue(k, v, arg string) bool {
+func (o *TagOption) SetKeyValue(k, v, arg string) bool {
 	switch k {
 	case "--target":
 		o.TargetCommitish = v
@@ -128,7 +131,7 @@ func deleteRelease(c *github.Client, v *github.Release, noDryRun bool) {
 	}
 }
 
-func handleDeleteByTagName(c *github.Client, o *OptionByTag) {
+func handleDeleteByTagName(c *github.Client, o *TagOption) {
 	if !o.AsRegex {
 		v, err := c.GetReleaseByTagName(o.TagName)
 		if err != nil {
@@ -175,17 +178,17 @@ func handleDeleteByTagName(c *github.Client, o *OptionByTag) {
 	log.Print("OK")
 }
 
-type Option struct {
+type ReleaseOption struct {
 	ReleaseID int64
 	NoDryRun  bool
 }
 
-func (o *Option) SetArg(arg string) bool {
+func (o *ReleaseOption) SetArg(arg string) bool {
 	if o.ReleaseID != 0 {
 		// <release-id> has already passed
 		log.Error("invalid arguments")
 		Usage(1)
-	} else if arg == "" {
+	} else if isEmptyString(arg) {
 		log.Error("invalid <release-id> argument")
 		Usage(1)
 	}
@@ -204,7 +207,7 @@ func (o *Option) SetArg(arg string) bool {
 	return true
 }
 
-func (o *Option) SetFlag(arg string) bool {
+func (o *ReleaseOption) SetFlag(arg string) bool {
 	switch arg {
 	case "--no-dry-run":
 		o.NoDryRun = true
@@ -217,13 +220,13 @@ func (o *Option) SetFlag(arg string) bool {
 	return true
 }
 
-func (o *Option) SetKeyValue(k, v, arg string) bool {
+func (o *ReleaseOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
 	Usage(1)
 	return true
 }
 
-func handleDelete(c *github.Client, o *Option) {
+func handleDelete(c *github.Client, o *ReleaseOption) {
 	v, err := c.GetRelease(int(o.ReleaseID))
 	if err != nil {
 		log.Fatalf("failed to get release: %v", err)
@@ -242,8 +245,8 @@ func Run(c *github.Client, args []string) {
 	}
 
 	switch arg {
-	case "by-tag-name":
-		o := &OptionByTag{}
+	case "by-tag":
+		o := &TagOption{}
 		getopt.Parse(o, args[1:])
 		if o.TagName == "" {
 			log.Error("invalid arguments")
@@ -252,7 +255,7 @@ func Run(c *github.Client, args []string) {
 		handleDeleteByTagName(c, o)
 
 	default:
-		o := &Option{}
+		o := &ReleaseOption{}
 		getopt.Parse(o, args)
 		if o.ReleaseID == 0 {
 			log.Error("invalid arguments")
