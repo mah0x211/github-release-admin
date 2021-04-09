@@ -5,6 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github-release-admin/getopt"
 	"github-release-admin/github"
@@ -19,8 +20,8 @@ Delete release.
 
 Usage:
     delete <release-id> [--no-dry-run]
-    delete by-tag-name <tag> [--regex] [--posix] [--target=<target>]
-           [--draft] [--prerelease] [--no-dry-run]
+    delete by-tag <tag> [--regex] [--posix] [--target=<target>] [--draft]
+           [--prerelease] [--no-dry-run]
 
 Arguments:
     <release-id>        delete a release with the specified id. (greater than 0)
@@ -35,6 +36,10 @@ Options:
     --no-dry-run        actually execute the request.
 `)
 	osExit(1)
+}
+
+func isEmptyString(s string) bool {
+	return strings.TrimSpace(s) == ""
 }
 
 type TagOption struct {
@@ -52,8 +57,7 @@ func (o *TagOption) SetArg(arg string) bool {
 		// <tag> has already passed
 		log.Error("invalid arguments")
 		Usage(1)
-
-	} else if arg == "" {
+	} else if isEmptyString(arg) {
 		log.Error("invalid <tag> argument")
 		Usage(1)
 	}
@@ -184,7 +188,7 @@ func (o *ReleaseOption) SetArg(arg string) bool {
 		// <release-id> has already passed
 		log.Error("invalid arguments")
 		Usage(1)
-	} else if arg == "" {
+	} else if isEmptyString(arg) {
 		log.Error("invalid <release-id> argument")
 		Usage(1)
 	}
@@ -241,7 +245,7 @@ func Run(c *github.Client, args []string) {
 	}
 
 	switch arg {
-	case "by-tag-name":
+	case "by-tag":
 		o := &TagOption{}
 		getopt.Parse(o, args[1:])
 		if o.TagName == "" {
