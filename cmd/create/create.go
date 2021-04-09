@@ -208,12 +208,6 @@ func handleRelease(c *github.Client, o *Option, r *readdir.Reader) {
 			break
 		}
 	}
-
-	if o.DryRun {
-		if err = c.DeleteRelease(rel.ID); err != nil {
-			log.Fatalf("failed to delete release: %v", err)
-		}
-	}
 }
 
 func Run(c *github.Client, args []string) {
@@ -243,4 +237,5 @@ func Run(c *github.Client, args []string) {
 	}
 
 	handleRelease(c, o, readdir.New(o.Dirname, o.Filename, re))
+	log.Print("OK")
 }
