@@ -197,6 +197,60 @@ func (c *Client) PostUpload(endpoint string, body io.Reader, size int64, mime st
 	return c.upload("POST", endpoint, body, size, mime)
 }
 
+func (c *Client) DownloadAsset(id int, pathname string) error {
+	dir := os.TempDir()
+	f, err := os.CreateTemp(dir, "ghr-download-*")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	defer os.Remove(f.Name())
+
+	u, err := resolveEndpoint(fmt.Sprintf("/releases/assets/%d", id))
+	if err != nil {
+		return err
+	}
+
+	req, err := c.createRequest("GET", c.baseURL+u)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/octet-stream")
+
+	if err = c.log(req, false); err != nil {
+		return err
+	}
+
+	rsp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		size := rsp.ContentLength
+		if n, err := io.Copy(f, rsp.Body); err != nil {
+			return err
+		} else if n != size {
+			return fmt.Errorf("unable to download the required file size %d/%d", n, size)
+		} else if err = os.Rename(f.Name(), pathname); err != nil {
+			return err
+		}
+		return nil
+
+	case http.StatusNotFound:
+		return nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, false)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
+	}
+}
+
 type Branch struct {
 	Name      string `json:"name"`
 	Protected bool   `json:"protected"`
