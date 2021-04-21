@@ -197,6 +197,60 @@ func (c *Client) PostUpload(endpoint string, body io.Reader, size int64, mime st
 	return c.upload("POST", endpoint, body, size, mime)
 }
 
+func (c *Client) DownloadAsset(id int, pathname string) error {
+	dir := os.TempDir()
+	f, err := os.CreateTemp(dir, "ghr-download-*")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	defer os.Remove(f.Name())
+
+	u, err := resolveEndpoint(fmt.Sprintf("/releases/assets/%d", id))
+	if err != nil {
+		return err
+	}
+
+	req, err := c.createRequest("GET", c.baseURL+u)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Accept", "application/octet-stream")
+
+	if err = c.log(req, false); err != nil {
+		return err
+	}
+
+	rsp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		size := rsp.ContentLength
+		if n, err := io.Copy(f, rsp.Body); err != nil {
+			return err
+		} else if n != size {
+			return fmt.Errorf("unable to download the required file size %d/%d", n, size)
+		} else if err = os.Rename(f.Name(), pathname); err != nil {
+			return err
+		}
+		return nil
+
+	case http.StatusNotFound:
+		return nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, false)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
+	}
+}
+
 type Branch struct {
 	Name      string `json:"name"`
 	Protected bool   `json:"protected"`
@@ -259,10 +313,17 @@ type Author struct {
 }
 
 type Asset struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name"`
-	ContentType string `json:"content_type"`
-	Size        int    `json:"size"`
+	ID                 int    `json:"id"`
+	Name               string `json:"name"`
+	Label              string `json:"label"`
+	ContentType        string `json:"content_type"`
+	Size               int    `json:"size"`
+	URL                string `json:"url"`
+	BrowserDownloadURL string `json:"browser_download_url"`
+	DownloadCount      int    `json:"download_count"`
+	CreatedAt          string `json:"created_at"`
+	UpdatedAt          string `json:"updated_at"`
+	Uploader           Author `json:"uploader"`
 }
 
 type Release struct {
@@ -442,6 +503,33 @@ func (c *Client) GetRelease(id int) (*Release, error) {
 
 func (c *Client) GetReleaseByTagName(tag string) (*Release, error) {
 	rsp, err := c.Get(fmt.Sprintf("/releases/tags/%s", tag))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusNotFound:
+		return nil, nil
+
+	case http.StatusOK:
+		release := &Release{}
+		if err := json.NewDecoder(rsp.Body).Decode(&release); err != nil {
+			return nil, err
+		}
+		return release, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
+func (c *Client) GetReleaseLatest() (*Release, error) {
+	rsp, err := c.Get("/releases/latest")
 	if err != nil {
 		return nil, err
 	}

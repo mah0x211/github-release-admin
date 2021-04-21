@@ -24,6 +24,9 @@ func parseCommand(c *github.Client, args []string) {
 	case "delete":
 		cmd.Delete(c, args[1:])
 
+	case "download":
+		cmd.Download(c, args[1:])
+
 	default:
 		log.Errorf("invalid command %q", args[0])
 		cmd.Usage(1)
