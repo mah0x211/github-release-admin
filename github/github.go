@@ -346,7 +346,8 @@ type ListRelease struct {
 	Releases []*Release
 }
 
-// Link: <https://api.github.com/repositories/194783954/releases?per_page=1&page=2>; rel=\"next\",
+// ReLinkNext is used to check the Link header
+// 	<https://api.github.com/repositories/194783954/releases?per_page=1&page=2>; rel=\"next\"
 var ReLinkNext = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
 func (c *Client) getNextPage(link string) (int, error) {
