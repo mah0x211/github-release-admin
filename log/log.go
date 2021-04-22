@@ -41,6 +41,12 @@ func Printf(format string, a ...interface{}) {
 	fprintf(Stdout, format, a...)
 }
 
+func Debug(format string, a ...interface{}) {
+	if Verbose {
+		Printf(format, a...)
+	}
+}
+
 func Fatalf(format string, a ...interface{}) {
 	Errorf(format, a...)
 	osExit(1)
