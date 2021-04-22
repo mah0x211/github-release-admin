@@ -131,15 +131,29 @@ func deleteRelease(c *github.Client, v *github.Release, noDryRun bool) {
 	}
 }
 
+func isDeletionTarget(v *github.Release, o *TagOption, re *regexp.Regexp) bool {
+	if o.Draft && !v.Draft {
+		log.Debug("ignore non-draft release: %s<%d>", v.Name, v.ID)
+		return false
+	} else if o.PreRelease && !v.PreRelease {
+		log.Debug("ignore non-prerelease: %s<%d>", v.Name, v.ID)
+		return false
+	} else if o.TargetCommitish != "" && v.TargetCommitish != o.TargetCommitish {
+		log.Debug("ignore release that commitish does not matched to %q: %s<%d>", o.TargetCommitish, v.Name, v.ID)
+		return false
+	} else if re != nil && !re.MatchString(v.TagName) {
+		log.Debug("ignore release that tag-name does not matched to %q: %s<%d>", o.TagName, v.Name, v.ID)
+		return false
+	}
+	return true
+}
+
 func handleDeleteByTagName(c *github.Client, o *TagOption) {
 	if !o.AsRegex {
 		v, err := c.GetReleaseByTagName(o.TagName)
 		if err != nil {
 			log.Fatalf("failed to get release: %v", err)
-		} else if v == nil ||
-			(o.Draft && !v.Draft) ||
-			(o.PreRelease && !v.PreRelease) ||
-			(o.TargetCommitish != "" && v.TargetCommitish != o.TargetCommitish) {
+		} else if v == nil || !isDeletionTarget(v, o, nil) {
 			log.Fatal("release not found")
 		}
 
@@ -161,10 +175,7 @@ func handleDeleteByTagName(c *github.Client, o *TagOption) {
 
 	ndelete := 0
 	fetch(c, func(v *github.Release) {
-		if (o.Draft && !v.Draft) ||
-			(o.PreRelease && !v.PreRelease) ||
-			(o.TargetCommitish != "" && v.TargetCommitish != o.TargetCommitish) ||
-			!re.MatchString(v.TagName) {
+		if !isDeletionTarget(v, o, re) {
 			// ignore
 			return
 		}
