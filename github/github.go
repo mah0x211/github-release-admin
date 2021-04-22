@@ -399,6 +399,32 @@ func (c *Client) ListReleases(nitem, page int) (*ListRelease, error) {
 	}
 }
 
+type FetchReleaseCallback func(v *Release, page int) error
+
+func (c *Client) FetchRelease(page, itemsPerPage int, fn FetchReleaseCallback) error {
+	if page < 1 {
+		page = 1
+	}
+	if itemsPerPage < 1 {
+		itemsPerPage = 20
+	}
+
+	for page > 0 {
+		list, err := c.ListReleases(itemsPerPage, page)
+		if err != nil {
+			return err
+		}
+		for _, v := range list.Releases {
+			if err = fn(v, page); err != nil {
+				return err
+			}
+		}
+		page = list.NextPage
+	}
+
+	return nil
+}
+
 func (c *Client) CreateRelease(tagName, targetCommitish, name, body string, draft, prerelease bool) (*Release, error) {
 	b, err := json.Marshal(&Release{
 		TagName:         tagName,
