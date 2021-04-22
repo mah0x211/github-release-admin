@@ -346,7 +346,8 @@ type ListRelease struct {
 	Releases []*Release
 }
 
-// Link: <https://api.github.com/repositories/194783954/releases?per_page=1&page=2>; rel=\"next\",
+// ReLinkNext is used to check the Link header
+// 	<https://api.github.com/repositories/194783954/releases?per_page=1&page=2>; rel=\"next\"
 var ReLinkNext = regexp.MustCompile(`<([^>]+)>; rel="next"`)
 
 func (c *Client) getNextPage(link string) (int, error) {
@@ -397,6 +398,32 @@ func (c *Client) ListReleases(nitem, page int) (*ListRelease, error) {
 		}
 		return nil, err
 	}
+}
+
+type FetchReleaseCallback func(v *Release, page int) error
+
+func (c *Client) FetchRelease(page, itemsPerPage int, fn FetchReleaseCallback) error {
+	if page < 1 {
+		page = 1
+	}
+	if itemsPerPage < 1 {
+		itemsPerPage = 20
+	}
+
+	for page > 0 {
+		list, err := c.ListReleases(itemsPerPage, page)
+		if err != nil {
+			return err
+		}
+		for _, v := range list.Releases {
+			if err = fn(v, page); err != nil {
+				return err
+			}
+		}
+		page = list.NextPage
+	}
+
+	return nil
 }
 
 func (c *Client) CreateRelease(tagName, targetCommitish, name, body string, draft, prerelease bool) (*Release, error) {

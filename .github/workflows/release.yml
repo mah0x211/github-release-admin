@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      # -
+      #   name: Install APT Packages
+      #   run: |
+      #     sudo apt update
+      #     sudo apt-get -V install -y make
+      -
+        name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.16
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Build
+        run: make dist
+      -
+        name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build/github-release-create \
+            ${GITHUB_REPOSITORY} ${GITHUB_REF##*/} \
+            ^github-release-.+.tar.gz$ --dir=build/ --posix --verbose \
+            --no-draft --no-prerelease --no-dry-run --title=${GITHUB_REF##*/}
