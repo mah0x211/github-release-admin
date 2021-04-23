@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github-release-admin/util"
 )
 
 var Stdout io.Writer = os.Stdout
@@ -22,11 +24,11 @@ func Print(a ...interface{}) {
 	fprintln(Stdout, a...)
 }
 
-var osExit = os.Exit
+var exit = util.Exit
 
 func Fatal(a ...interface{}) {
 	Error(a...)
-	osExit(1)
+	exit(1)
 }
 
 func fprintf(w io.Writer, format string, a ...interface{}) {
@@ -49,5 +51,5 @@ func Debug(format string, a ...interface{}) {
 
 func Fatalf(format string, a ...interface{}) {
 	Errorf(format, a...)
-	osExit(1)
+	exit(1)
 }

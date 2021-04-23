@@ -9,9 +9,10 @@ import (
 	"github-release-admin/getopt"
 	"github-release-admin/github"
 	"github-release-admin/log"
+	"github-release-admin/util"
 )
 
-var osExit = os.Exit
+var exit = util.Exit
 
 func Usage(code int) {
 	log.Print(`
@@ -43,7 +44,7 @@ Options:
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
 `)
-	osExit(code)
+	exit(code)
 }
 
 func isNotEmptyString(s string) bool {
