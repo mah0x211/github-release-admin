@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -204,17 +205,15 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		arg = args[0]
 	}
 
+	var list []*github.Release
+	var err error
+
 	switch arg {
 	case "unbranched":
 		o := &UnbranchedReleasesOption{}
 		o.DryRun = true
-
 		getopt.Parse(o, args[1:])
-		if err := delete.UnbranchedReleases(
-			ghc, &o.UnbranchedReleasesOption,
-		); err != nil {
-			log.Fatalf("failed to delete release: %v", err)
-		}
+		list, err = delete.UnbranchedReleases(ghc, &o.UnbranchedReleasesOption)
 
 	case "by-tag":
 		o := &ReleasesByTagNameOption{}
@@ -241,6 +240,12 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		} else if err := delete.Release(ghc, &o.ReleaseOption); err != nil {
 			log.Fatalf("failed to delete release: %v", err)
 		}
+	}
+
+	b, _ := json.MarshalIndent(list, "", "  ")
+	log.Print(string(b))
+	if err != nil {
+		log.Fatalf("failed to delete release: %v", err)
 	}
 }
 

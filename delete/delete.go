@@ -31,8 +31,8 @@ type UnbranchedReleasesOption struct {
 	DryRun       bool
 }
 
-func UnbranchedReleases(ghc *github.Client, o *UnbranchedReleasesOption) error {
-	ndelete := 0
+func UnbranchedReleases(ghc *github.Client, o *UnbranchedReleasesOption) ([]*github.Release, error) {
+	list := []*github.Release{}
 	if err := ghc.FetchRelease(1, o.ItemsPerPage, func(v *github.Release, _ int) error {
 		if b, err := ghc.GetBranch(v.TargetCommitish); err != nil {
 			return err
@@ -43,16 +43,13 @@ func UnbranchedReleases(ghc *github.Client, o *UnbranchedReleasesOption) error {
 		} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
 			return err
 		}
-		ndelete++
+		list = append(list, v)
 		return nil
 	}); err != nil {
-		return err
+		return list, err
 	}
 
-	if ndelete == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return list, nil
 }
 
 type DraftReleasesOption struct {
