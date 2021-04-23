@@ -218,16 +218,12 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 	case "by-tag":
 		o := &ReleasesByTagNameOption{}
 		o.DryRun = true
-
 		getopt.Parse(o, args[1:])
 		if o.TagName == "" {
 			log.Error("invalid arguments")
 			usage(1)
-		} else if err := delete.ReleasesByTagName(
-			ghc, &o.ReleasesByTagNameOption,
-		); err != nil {
-			log.Fatalf("failed to delete release: %v", err)
 		}
+		list, err = delete.ReleasesByTagName(ghc, &o.ReleasesByTagNameOption)
 
 	default:
 		o := &ReleaseOption{}

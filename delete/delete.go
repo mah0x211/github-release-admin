@@ -107,15 +107,19 @@ func isDeletionTarget(v *github.Release, o *ReleasesByTagNameOption, re *regexp.
 	return true
 }
 
-func ReleasesByTagName(ghc *github.Client, o *ReleasesByTagNameOption) error {
+func ReleasesByTagName(ghc *github.Client, o *ReleasesByTagNameOption) ([]*github.Release, error) {
+	list := []*github.Release{}
+
 	if !o.AsRegex {
 		v, err := ghc.GetReleaseByTagName(o.TagName)
 		if err != nil {
-			return err
+			return list, err
 		} else if v == nil || !isDeletionTarget(v, o, nil) {
-			return ErrNotFound
+			return list, nil
+		} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
+			return list, err
 		}
-		return deleteRelease(ghc, v, o.DryRun)
+		return append(list, v), nil
 	}
 
 	var re *regexp.Regexp
@@ -126,28 +130,24 @@ func ReleasesByTagName(ghc *github.Client, o *ReleasesByTagNameOption) error {
 		re, err = regexp.Compile(o.TagName)
 	}
 	if err != nil {
-		return fmt.Errorf(
+		return list, fmt.Errorf(
 			"%q cannot be compiled as regular expression: %w", o.TagName, err,
 		)
 	}
 
-	ndelete := 0
 	if err = ghc.FetchRelease(1, o.ItemsPerPage, func(v *github.Release, _ int) error {
 		if !isDeletionTarget(v, o, re) {
 			return nil
 		} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
 			return err
 		}
-		ndelete++
+		list = append(list, v)
 		return nil
 	}); err != nil {
-		return err
+		return list, err
 	}
 
-	if ndelete == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return list, nil
 }
 
 type ReleaseOption struct {
