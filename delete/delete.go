@@ -55,6 +55,33 @@ func UnbranchedReleases(ghc *github.Client, o *UnbranchedReleasesOption) error {
 	return nil
 }
 
+type DraftReleasesOption struct {
+	ItemsPerPage int
+	DryRun       bool
+	Branch       string
+}
+
+func DraftReleases(ghc *github.Client, o *DraftReleasesOption) ([]*github.Release, error) {
+	list := []*github.Release{}
+	if err := ghc.FetchRelease(1, o.ItemsPerPage, func(v *github.Release, _ int) error {
+		if !v.Draft {
+			log.Debug("ignore non-draft release: %d", v.ID)
+			return nil
+		} else if o.Branch != "" && v.TargetCommitish != o.Branch {
+			log.Debug("ignore release that branch does not matched to %q: %d", o.Branch, v.ID)
+			return nil
+		} else if err := deleteRelease(ghc, v, o.DryRun); err != nil {
+			return err
+		}
+		list = append(list, v)
+		return nil
+	}); err != nil {
+		return list, err
+	}
+
+	return list, nil
+}
+
 type ReleasesByTagNameOption struct {
 	ItemsPerPage    int
 	TagName         string
