@@ -1,0 +1,40 @@
+name: Delete
+
+on: delete
+
+jobs:
+  delete:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      # -
+      #   name: Install APT Packages
+      #   run: |
+      #     sudo apt update
+      #     sudo apt-get -V install -y make
+      -
+        name: Set up Go
+        uses: actions/setup-go@v1
+        with:
+          go-version: 1.16
+      -
+        name: Checkout
+        uses: actions/checkout@v2
+      -
+        name: Build
+        run: make build
+      -
+        name: Delete Draft Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build/github-release-delete draft --verbose --no-dry-run
+      -
+        name: Delete Unbranched Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build/github-release-delete unbranched --verbose --no-dry-run
