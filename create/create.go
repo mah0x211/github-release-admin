@@ -1,6 +1,7 @@
 package create
 
 import (
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -25,7 +26,7 @@ type Option struct {
 	DryRun          bool
 }
 
-func upload(c *github.Client, id int, pathname string, o *Option) error {
+func upload(ghc *github.Client, v *github.Release, pathname string, o *Option) error {
 	f, err := os.Open(pathname)
 	if err != nil {
 		return err
@@ -45,12 +46,12 @@ func upload(c *github.Client, id int, pathname string, o *Option) error {
 
 	log.Debug("upload %s %d byte (%s)", name, size, mime)
 	if !o.DryRun {
-		return c.UploadAsset(id, name, f, size, mime)
+		return v.UploadAsset(ghc, name, f, size, mime)
 	}
 	return nil
 }
 
-func Release(c *github.Client, o *Option, r *readdir.Reader, assets []string) error {
+func Release(ghc *github.Client, o *Option, r *readdir.Reader, assets []string) error {
 	if len(assets) == 0 {
 		return nil
 	}
@@ -59,17 +60,25 @@ func Release(c *github.Client, o *Option, r *readdir.Reader, assets []string) er
 	var err error
 	if o.DryRun {
 		v = &github.Release{}
-	} else if v, err = c.CreateRelease(
+	} else if v, err = ghc.CreateRelease(
 		o.TagName, o.TargetCommitish, o.Title, o.Body, o.Draft, o.PreRelease,
 	); err != nil {
 		return err
 	}
 
+	if log.Verbose {
+		b, err := json.MarshalIndent(v, "", "  ")
+		if err != nil {
+			return err
+		}
+		log.Debug("create release %s", b)
+	}
+
 	// upload asset files
 	for _, pathname := range assets {
-		if err = upload(c, v.ID, pathname, o); err != nil {
+		if err = upload(ghc, v, pathname, o); err != nil {
 			if !o.DryRun {
-				if err := c.DeleteRelease(v.ID); err != nil {
+				if err := ghc.DeleteRelease(v.ID); err != nil {
 					log.Errorf("failed to delete the failed release: %v", err)
 				}
 			}
