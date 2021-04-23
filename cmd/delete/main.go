@@ -27,6 +27,8 @@ Usage:
     github-release-delete [<repo>] unbranched [--verbose] [--no-dry-run]
     github-release-delete [<repo>] draft [--verbose] [--no-dry-run]
                           [--branch=<branch>]
+    github-release-delete [<repo>] prerelease [--verbose] [--no-dry-run]
+                          [--branch=<branch>]
     github-release-delete [<repo>] by-tag <tag>[@<target>] [--verbose]
                           [--no-dry-run] [--regex] [--posix] [--draft]
                           [--prerelease]
@@ -36,13 +38,16 @@ Arguments:
     <repo>              if the GITHUB_REPOSITORY environment variable is not
                         defined, you must specify the target repository.
     <release-id>        delete a release with the specified id. (greater than 0)
+    draft               delete draft releases.
+	unbranched          delete unbranched releases.
+    prerelease          delete prereleases.
     by-tag              delete a release with the specified tag.
     <tag>               specify an existing tag. (e.g. v1.0.0)
     <target>            specify a branch, or commish. (e.g. master)
 
 Options:
     --verbose           display verbose output of the execution.
-	--no-dry-run        actually execute the request.
+    --no-dry-run        actually execute the request.
     --branch=<branch>   delete only the releases associated with the
                         specified branch.
     --regex             compile a <tag> as regular expressions.
@@ -120,6 +125,44 @@ func (o *DraftReleasesOption) SetFlag(arg string) bool {
 }
 
 func (o *DraftReleasesOption) SetKeyValue(k, v, arg string) bool {
+	switch k {
+	case "--branch":
+		o.Branch = v
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		usage(1)
+	}
+	return true
+}
+
+type PreReleasesOption struct {
+	delete.PreReleasesOption
+}
+
+func (o *PreReleasesOption) SetArg(arg string) bool {
+	log.Error("invalid arguments")
+	usage(1)
+	return true
+}
+
+func (o *PreReleasesOption) SetFlag(arg string) bool {
+	switch arg {
+	case "--verbose":
+		log.Verbose = true
+
+	case "--no-dry-run":
+		o.DryRun = false
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		usage(1)
+	}
+
+	return true
+}
+
+func (o *PreReleasesOption) SetKeyValue(k, v, arg string) bool {
 	switch k {
 	case "--branch":
 		o.Branch = v
@@ -262,6 +305,12 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		o.DryRun = true
 		getopt.Parse(o, args[1:])
 		list, err = delete.DraftReleases(ghc, &o.DraftReleasesOption)
+
+	case "prerelease":
+		o := &PreReleasesOption{}
+		o.DryRun = true
+		getopt.Parse(o, args[1:])
+		list, err = delete.PreReleases(ghc, &o.PreReleasesOption)
 
 	case "by-tag":
 		o := &ReleasesByTagNameOption{}
