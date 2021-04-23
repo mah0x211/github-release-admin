@@ -29,7 +29,7 @@ func Start(startfn StartFunc, usagefn UsageFunc) int {
 			usagefn(0)
 		}
 
-		ghc, err := github.New(args[0])
+		ghc, err := github.New(ctx, args[0])
 		if err != nil {
 			log.Error(err)
 			usagefn(1)

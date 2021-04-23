@@ -2,6 +2,7 @@ package github
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,6 +19,7 @@ import (
 )
 
 type Client struct {
+	ctx        context.Context
 	baseURL    string
 	uploadURL  string
 	baseHeader http.Header
@@ -50,7 +52,7 @@ func getGitHubAPIURL() (string, error) {
 var ReOwnerName = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
 var ReRepoName = regexp.MustCompile(`^[\w-][\w.-]*$`)
 
-func New(repo string) (*Client, error) {
+func New(ctx context.Context, repo string) (*Client, error) {
 	if repo = strings.TrimSpace(repo); repo == "" {
 		return nil, fmt.Errorf("repo name must not be empty")
 	}
@@ -76,6 +78,7 @@ func New(repo string) (*Client, error) {
 	}
 
 	c := &Client{
+		ctx:       ctx,
 		baseURL:   baseURL + "/repos/" + repo,
 		uploadURL: "https://uploads.github.com/repos/" + repo + "/releases",
 		baseHeader: http.Header{
@@ -108,7 +111,7 @@ func (c *Client) createRequest(method, url string) (*http.Request, error) {
 	c.Body = nil
 	c.Header = nil
 
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequestWithContext(c.ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
