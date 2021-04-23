@@ -43,15 +43,15 @@ func Test_Fatal(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	Stderr = b
 
-	exitfn := osExit
+	exitfn := exit
 	var exitCode int
-	osExit = func(code int) {
+	exit = func(code int) {
 		exitCode = code
 	}
 
 	defer func() {
 		Stderr = w
-		osExit = exitfn
+		exit = exitfn
 	}()
 
 	// test that output arguments to Stderr then call osExit(1)
@@ -90,16 +90,16 @@ func Test_Fatalf(t *testing.T) {
 	b := bytes.NewBuffer(nil)
 	Stderr = b
 
-	exitfn := osExit
+	exitfn := exit
 	var exitCode int
-	osExit = func(code int) {
+	exit = func(code int) {
 		exitCode = code
 	}
 
 	// test that output formatted-string to Stderr then call osExit(1)
 	Fatalf("format %q", "hello")
 	Stderr = w
-	osExit = exitfn
+	exit = exitfn
 	assert.Equal(t, "format \"hello\"\n", b.String())
 	assert.Equal(t, 1, exitCode)
 }

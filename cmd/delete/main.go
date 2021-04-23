@@ -1,32 +1,37 @@
 package main
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"strings"
 
+	"github-release-admin/cmd"
 	"github-release-admin/delete"
 	"github-release-admin/getopt"
 	"github-release-admin/github"
 	"github-release-admin/log"
+	"github-release-admin/util"
 )
 
-var osExit = os.Exit
+var exit = util.Exit
 
-func Usage(code int) {
+func usage(code int) {
 	log.Print(`
 Delete release.
 
 Usage:
     github-release-delete help
-    github-release-delete <repo> <release-id> [--verbose] [--no-dry-run]
-    github-release-delete <repo> no-branch [--verbose] [--no-dry-run]
-    github-release-delete <repo> by-tag <tag>[@<target>] [--verbose] [--no-dry-run]
-                          [--regex] [--posix] [--draft] [--prerelease]
+    github-release-delete [<repo>] <release-id> [--verbose] [--no-dry-run]
+    github-release-delete [<repo>] no-branch [--verbose] [--no-dry-run]
+    github-release-delete [<repo>] by-tag <tag>[@<target>] [--verbose]
+                          [--no-dry-run] [--regex] [--posix] [--draft]
+                          [--prerelease]
 
 Arguments:
     help                display help message.
-    <repo>              must be specified in the format "owner/repo".
+    <repo>              if the GITHUB_REPOSITORY environment variable is not
+                        defined, you must specify the target repository.
     <release-id>        delete a release with the specified id. (greater than 0)
     by-tag              delete a release with the specified tag.
     <tag>               specify an existing tag. (e.g. v1.0.0)
@@ -42,8 +47,9 @@ Options:
 
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
+    GITHUB_REPOSITORY   must be specified in the format "owner/repo".
 `)
-	osExit(code)
+	exit(code)
 }
 
 func isNotEmptyString(s string) bool {
@@ -56,7 +62,7 @@ type NoBranchOption struct {
 
 func (o *NoBranchOption) SetArg(arg string) bool {
 	log.Error("invalid arguments")
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -70,7 +76,7 @@ func (o *NoBranchOption) SetFlag(arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 
 	return true
@@ -78,7 +84,7 @@ func (o *NoBranchOption) SetFlag(arg string) bool {
 
 func (o *NoBranchOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -104,11 +110,11 @@ func (o *TagOption) SetArg(arg string) bool {
 			}
 		}
 		log.Error("invalid <tag>[@<target>] arguments")
-		Usage(1)
+		usage(1)
 	}
 
 	log.Error("invalid arguments")
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -134,7 +140,7 @@ func (o *TagOption) SetFlag(arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 
 	return true
@@ -142,7 +148,7 @@ func (o *TagOption) SetFlag(arg string) bool {
 
 func (o *TagOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -161,12 +167,12 @@ func (o *ReleaseOption) SetArg(arg string) bool {
 		}
 
 		log.Error("invalid <release-id> argument")
-		Usage(1)
+		usage(1)
 	}
 
 	// <release-id> has already passed
 	log.Error("invalid arguments")
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -180,7 +186,7 @@ func (o *ReleaseOption) SetFlag(arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 
 	return true
@@ -188,11 +194,11 @@ func (o *ReleaseOption) SetFlag(arg string) bool {
 
 func (o *ReleaseOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
-	Usage(1)
+	usage(1)
 	return true
 }
 
-func Run(ghc *github.Client, args []string) {
+func start(ctx context.Context, ghc *github.Client, args []string) {
 	arg := ""
 	if len(args) > 0 {
 		arg = args[0]
@@ -215,7 +221,7 @@ func Run(ghc *github.Client, args []string) {
 		getopt.Parse(o, args[1:])
 		if o.TagName == "" {
 			log.Error("invalid arguments")
-			Usage(1)
+			usage(1)
 		} else if err := delete.ByTagName(ghc, &o.TagOption); err != nil {
 			log.Fatalf("failed to delete release: %v", err)
 		}
@@ -227,7 +233,7 @@ func Run(ghc *github.Client, args []string) {
 		getopt.Parse(o, args)
 		if o.ReleaseID == 0 {
 			log.Error("invalid arguments")
-			Usage(1)
+			usage(1)
 		} else if err := delete.Release(ghc, &o.ReleaseOption); err != nil {
 			log.Fatalf("failed to delete release: %v", err)
 		}
@@ -235,15 +241,5 @@ func Run(ghc *github.Client, args []string) {
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) == 0 || args[0] == "help" {
-		Usage(0)
-	}
-	ghc, err := github.New(args[0])
-	if err != nil {
-		log.Error(err)
-		Usage(1)
-	}
-
-	Run(ghc, args[1:])
+	os.Exit(cmd.Start(start, usage))
 }

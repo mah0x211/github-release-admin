@@ -2,6 +2,7 @@ package github
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,9 +15,11 @@ import (
 	"strings"
 
 	"github-release-admin/log"
+	"github-release-admin/util"
 )
 
 type Client struct {
+	ctx        context.Context
 	baseURL    string
 	uploadURL  string
 	baseHeader http.Header
@@ -28,7 +31,7 @@ const GITHUB_API_URL = "https://api.github.com"
 
 func getGitHubAPIURL() (string, error) {
 	// use GITHUB_API_URL if define
-	if s := strings.TrimSpace(os.Getenv("GITHUB_API_URL")); s != "" {
+	if s, found := util.Getenv("GITHUB_API_URL"); found && s != "" {
 		u, err := url.Parse(s)
 		if err != nil {
 			return "", fmt.Errorf("invalid GITHUB_API_URL environment variable: %w", err)
@@ -49,7 +52,7 @@ func getGitHubAPIURL() (string, error) {
 var ReOwnerName = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
 var ReRepoName = regexp.MustCompile(`^[\w-][\w.-]*$`)
 
-func New(repo string) (*Client, error) {
+func New(ctx context.Context, repo string) (*Client, error) {
 	if repo = strings.TrimSpace(repo); repo == "" {
 		return nil, fmt.Errorf("repo name must not be empty")
 	}
@@ -75,6 +78,7 @@ func New(repo string) (*Client, error) {
 	}
 
 	c := &Client{
+		ctx:       ctx,
 		baseURL:   baseURL + "/repos/" + repo,
 		uploadURL: "https://uploads.github.com/repos/" + repo + "/releases",
 		baseHeader: http.Header{
@@ -83,7 +87,7 @@ func New(repo string) (*Client, error) {
 	}
 
 	// use GITHUB_TOKEN if define
-	if token := strings.TrimSpace(os.Getenv("GITHUB_TOKEN")); token != "" {
+	if token, found := util.Getenv("GITHUB_TOKEN"); found && token != "" {
 		c.baseHeader.Set("Authorization", fmt.Sprintf("token %s", token))
 	}
 
@@ -107,7 +111,7 @@ func (c *Client) createRequest(method, url string) (*http.Request, error) {
 	c.Body = nil
 	c.Header = nil
 
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequestWithContext(c.ctx, method, url, body)
 	if err != nil {
 		return nil, err
 	}
