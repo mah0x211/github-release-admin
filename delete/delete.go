@@ -24,14 +24,14 @@ func deleteRelease(ghc *github.Client, v *github.Release, dryrun bool) error {
 	return ghc.DeleteRelease(v.ID)
 }
 
-type NoBranchOption struct {
+var ErrNotFound = fmt.Errorf("not found")
+
+type UnbranchedReleasesOption struct {
 	ItemsPerPage int
 	DryRun       bool
 }
 
-var ErrNotFound = fmt.Errorf("not found")
-
-func NoBranch(ghc *github.Client, o *NoBranchOption) error {
+func UnbranchedReleases(ghc *github.Client, o *UnbranchedReleasesOption) error {
 	ndelete := 0
 	if err := ghc.FetchRelease(1, o.ItemsPerPage, func(v *github.Release, _ int) error {
 		if b, err := ghc.GetBranch(v.TargetCommitish); err != nil {
@@ -55,7 +55,7 @@ func NoBranch(ghc *github.Client, o *NoBranchOption) error {
 	return nil
 }
 
-type TagOption struct {
+type ReleasesByTagNameOption struct {
 	ItemsPerPage    int
 	TagName         string
 	TargetCommitish string
@@ -66,7 +66,7 @@ type TagOption struct {
 	DryRun          bool
 }
 
-func isDeletionTarget(v *github.Release, o *TagOption, re *regexp.Regexp) bool {
+func isDeletionTarget(v *github.Release, o *ReleasesByTagNameOption, re *regexp.Regexp) bool {
 	if o.Draft && !v.Draft {
 		log.Debug("ignore non-draft release: %d", v.ID)
 		return false
@@ -83,7 +83,7 @@ func isDeletionTarget(v *github.Release, o *TagOption, re *regexp.Regexp) bool {
 	return true
 }
 
-func ByTagName(ghc *github.Client, o *TagOption) error {
+func ReleasesByTagName(ghc *github.Client, o *ReleasesByTagNameOption) error {
 	if !o.AsRegex {
 		v, err := ghc.GetReleaseByTagName(o.TagName)
 		if err != nil {
