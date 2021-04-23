@@ -39,7 +39,7 @@ Arguments:
                         defined, you must specify the target repository.
     <release-id>        delete a release with the specified id. (greater than 0)
     draft               delete draft releases.
-	unbranched          delete unbranched releases.
+    unbranched          delete unbranched releases.
     prerelease          delete prereleases.
     by-tag              delete a release with the specified tag.
     <tag>               specify an existing tag. (e.g. v1.0.0)
