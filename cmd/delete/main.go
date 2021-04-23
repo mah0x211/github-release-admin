@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"strconv"
 	"strings"
@@ -23,7 +24,9 @@ Delete release.
 Usage:
     github-release-delete help
     github-release-delete [<repo>] <release-id> [--verbose] [--no-dry-run]
-    github-release-delete [<repo>] no-branch [--verbose] [--no-dry-run]
+    github-release-delete [<repo>] unbranched [--verbose] [--no-dry-run]
+    github-release-delete [<repo>] draft [--verbose] [--no-dry-run]
+                          [--branch=<branch>]
     github-release-delete [<repo>] by-tag <tag>[@<target>] [--verbose]
                           [--no-dry-run] [--regex] [--posix] [--draft]
                           [--prerelease]
@@ -39,11 +42,13 @@ Arguments:
 
 Options:
     --verbose           display verbose output of the execution.
+	--no-dry-run        actually execute the request.
+    --branch=<branch>   delete only the releases associated with the
+                        specified branch.
     --regex             compile a <tag> as regular expressions.
     --posix             compile a <tag> as POSIX ERE (egrep).
-    --draft             delete only draft releases.
-    --prerelease        delete only prereleases.
-    --no-dry-run        actually execute the request.
+    --draft             delete draft releases.
+    --prerelease        delete prereleases.
 
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
@@ -56,17 +61,17 @@ func isNotEmptyString(s string) bool {
 	return strings.TrimSpace(s) != ""
 }
 
-type NoBranchOption struct {
-	delete.NoBranchOption
+type UnbranchedReleasesOption struct {
+	delete.UnbranchedReleasesOption
 }
 
-func (o *NoBranchOption) SetArg(arg string) bool {
+func (o *UnbranchedReleasesOption) SetArg(arg string) bool {
 	log.Error("invalid arguments")
 	usage(1)
 	return true
 }
 
-func (o *NoBranchOption) SetFlag(arg string) bool {
+func (o *UnbranchedReleasesOption) SetFlag(arg string) bool {
 	switch arg {
 	case "--verbose":
 		log.Verbose = true
@@ -82,17 +87,55 @@ func (o *NoBranchOption) SetFlag(arg string) bool {
 	return true
 }
 
-func (o *NoBranchOption) SetKeyValue(k, v, arg string) bool {
+func (o *UnbranchedReleasesOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
 	usage(1)
 	return true
 }
 
-type TagOption struct {
-	delete.TagOption
+type DraftReleasesOption struct {
+	delete.DraftReleasesOption
 }
 
-func (o *TagOption) SetArg(arg string) bool {
+func (o *DraftReleasesOption) SetArg(arg string) bool {
+	log.Error("invalid arguments")
+	usage(1)
+	return true
+}
+
+func (o *DraftReleasesOption) SetFlag(arg string) bool {
+	switch arg {
+	case "--verbose":
+		log.Verbose = true
+
+	case "--no-dry-run":
+		o.DryRun = false
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		usage(1)
+	}
+
+	return true
+}
+
+func (o *DraftReleasesOption) SetKeyValue(k, v, arg string) bool {
+	switch k {
+	case "--branch":
+		o.Branch = v
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		usage(1)
+	}
+	return true
+}
+
+type ReleasesByTagNameOption struct {
+	delete.ReleasesByTagNameOption
+}
+
+func (o *ReleasesByTagNameOption) SetArg(arg string) bool {
 	if o.TagName == "" {
 		arr := strings.Split(arg, "@")
 		switch len(arr) {
@@ -118,7 +161,7 @@ func (o *TagOption) SetArg(arg string) bool {
 	return true
 }
 
-func (o *TagOption) SetFlag(arg string) bool {
+func (o *ReleasesByTagNameOption) SetFlag(arg string) bool {
 	switch arg {
 	case "--verbose":
 		log.Verbose = true
@@ -146,7 +189,7 @@ func (o *TagOption) SetFlag(arg string) bool {
 	return true
 }
 
-func (o *TagOption) SetKeyValue(k, v, arg string) bool {
+func (o *ReleasesByTagNameOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
 	usage(1)
 	return true
@@ -204,27 +247,31 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		arg = args[0]
 	}
 
-	switch arg {
-	case "no-branch":
-		o := &NoBranchOption{}
-		o.DryRun = true
+	list := []*github.Release{}
+	var err error
 
+	switch arg {
+	case "unbranched":
+		o := &UnbranchedReleasesOption{}
+		o.DryRun = true
 		getopt.Parse(o, args[1:])
-		if err := delete.NoBranch(ghc, &o.NoBranchOption); err != nil {
-			log.Fatalf("failed to delete release: %v", err)
-		}
+		list, err = delete.UnbranchedReleases(ghc, &o.UnbranchedReleasesOption)
+
+	case "draft":
+		o := &DraftReleasesOption{}
+		o.DryRun = true
+		getopt.Parse(o, args[1:])
+		list, err = delete.DraftReleases(ghc, &o.DraftReleasesOption)
 
 	case "by-tag":
-		o := &TagOption{}
+		o := &ReleasesByTagNameOption{}
 		o.DryRun = true
-
 		getopt.Parse(o, args[1:])
 		if o.TagName == "" {
 			log.Error("invalid arguments")
 			usage(1)
-		} else if err := delete.ByTagName(ghc, &o.TagOption); err != nil {
-			log.Fatalf("failed to delete release: %v", err)
 		}
+		list, err = delete.ReleasesByTagName(ghc, &o.ReleasesByTagNameOption)
 
 	default:
 		o := &ReleaseOption{}
@@ -234,9 +281,17 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		if o.ReleaseID == 0 {
 			log.Error("invalid arguments")
 			usage(1)
-		} else if err := delete.Release(ghc, &o.ReleaseOption); err != nil {
+		} else if v, err := delete.Release(ghc, &o.ReleaseOption); err != nil {
 			log.Fatalf("failed to delete release: %v", err)
+		} else if v != nil {
+			list = append(list, v)
 		}
+	}
+
+	b, _ := json.MarshalIndent(list, "", "  ")
+	log.Print(string(b))
+	if err != nil {
+		log.Fatalf("failed to delete release: %v", err)
 	}
 }
 

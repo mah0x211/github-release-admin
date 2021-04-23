@@ -24,15 +24,15 @@ func deleteRelease(ghc *github.Client, v *github.Release, dryrun bool) error {
 	return ghc.DeleteRelease(v.ID)
 }
 
-type NoBranchOption struct {
+var ErrNotFound = fmt.Errorf("not found")
+
+type UnbranchedReleasesOption struct {
 	ItemsPerPage int
 	DryRun       bool
 }
 
-var ErrNotFound = fmt.Errorf("not found")
-
-func NoBranch(ghc *github.Client, o *NoBranchOption) error {
-	ndelete := 0
+func UnbranchedReleases(ghc *github.Client, o *UnbranchedReleasesOption) ([]*github.Release, error) {
+	list := []*github.Release{}
 	if err := ghc.FetchRelease(1, o.ItemsPerPage, func(v *github.Release, _ int) error {
 		if b, err := ghc.GetBranch(v.TargetCommitish); err != nil {
 			return err
@@ -43,19 +43,43 @@ func NoBranch(ghc *github.Client, o *NoBranchOption) error {
 		} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
 			return err
 		}
-		ndelete++
+		list = append(list, v)
 		return nil
 	}); err != nil {
-		return err
+		return list, err
 	}
 
-	if ndelete == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return list, nil
 }
 
-type TagOption struct {
+type DraftReleasesOption struct {
+	ItemsPerPage int
+	DryRun       bool
+	Branch       string
+}
+
+func DraftReleases(ghc *github.Client, o *DraftReleasesOption) ([]*github.Release, error) {
+	list := []*github.Release{}
+	if err := ghc.FetchRelease(1, o.ItemsPerPage, func(v *github.Release, _ int) error {
+		if !v.Draft {
+			log.Debug("ignore non-draft release: %d", v.ID)
+			return nil
+		} else if o.Branch != "" && v.TargetCommitish != o.Branch {
+			log.Debug("ignore release that branch does not matched to %q: %d", o.Branch, v.ID)
+			return nil
+		} else if err := deleteRelease(ghc, v, o.DryRun); err != nil {
+			return err
+		}
+		list = append(list, v)
+		return nil
+	}); err != nil {
+		return list, err
+	}
+
+	return list, nil
+}
+
+type ReleasesByTagNameOption struct {
 	ItemsPerPage    int
 	TagName         string
 	TargetCommitish string
@@ -66,7 +90,7 @@ type TagOption struct {
 	DryRun          bool
 }
 
-func isDeletionTarget(v *github.Release, o *TagOption, re *regexp.Regexp) bool {
+func isDeletionTarget(v *github.Release, o *ReleasesByTagNameOption, re *regexp.Regexp) bool {
 	if o.Draft && !v.Draft {
 		log.Debug("ignore non-draft release: %d", v.ID)
 		return false
@@ -83,15 +107,19 @@ func isDeletionTarget(v *github.Release, o *TagOption, re *regexp.Regexp) bool {
 	return true
 }
 
-func ByTagName(ghc *github.Client, o *TagOption) error {
+func ReleasesByTagName(ghc *github.Client, o *ReleasesByTagNameOption) ([]*github.Release, error) {
+	list := []*github.Release{}
+
 	if !o.AsRegex {
 		v, err := ghc.GetReleaseByTagName(o.TagName)
 		if err != nil {
-			return err
+			return list, err
 		} else if v == nil || !isDeletionTarget(v, o, nil) {
-			return ErrNotFound
+			return list, nil
+		} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
+			return list, err
 		}
-		return deleteRelease(ghc, v, o.DryRun)
+		return append(list, v), nil
 	}
 
 	var re *regexp.Regexp
@@ -102,28 +130,24 @@ func ByTagName(ghc *github.Client, o *TagOption) error {
 		re, err = regexp.Compile(o.TagName)
 	}
 	if err != nil {
-		return fmt.Errorf(
+		return list, fmt.Errorf(
 			"%q cannot be compiled as regular expression: %w", o.TagName, err,
 		)
 	}
 
-	ndelete := 0
 	if err = ghc.FetchRelease(1, o.ItemsPerPage, func(v *github.Release, _ int) error {
 		if !isDeletionTarget(v, o, re) {
 			return nil
 		} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
 			return err
 		}
-		ndelete++
+		list = append(list, v)
 		return nil
 	}); err != nil {
-		return err
+		return list, err
 	}
 
-	if ndelete == 0 {
-		return ErrNotFound
-	}
-	return nil
+	return list, nil
 }
 
 type ReleaseOption struct {
@@ -131,13 +155,14 @@ type ReleaseOption struct {
 	DryRun    bool
 }
 
-func Release(ghc *github.Client, o *ReleaseOption) error {
+func Release(ghc *github.Client, o *ReleaseOption) (*github.Release, error) {
 	v, err := ghc.GetRelease(int(o.ReleaseID))
 	if err != nil {
-		return err
+		return nil, err
 	} else if v == nil {
-		return ErrNotFound
+		return nil, nil
+	} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
+		return nil, err
 	}
-
-	return deleteRelease(ghc, v, o.DryRun)
+	return v, nil
 }
