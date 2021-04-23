@@ -35,6 +35,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           build/github-release-create \
-            ${GITHUB_REPOSITORY} ${GITHUB_REF##*/} \
+            ${GITHUB_REF##*/}@${GITHUB_SHA} \
             ^github-release-.+.tar.gz$ --dir=build/ --posix --verbose \
             --no-draft --no-prerelease --no-dry-run --title=${GITHUB_REF##*/}
