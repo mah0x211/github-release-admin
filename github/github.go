@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github-release-admin/log"
+	"github-release-admin/util"
 )
 
 type Client struct {
@@ -28,7 +29,7 @@ const GITHUB_API_URL = "https://api.github.com"
 
 func getGitHubAPIURL() (string, error) {
 	// use GITHUB_API_URL if define
-	if s := strings.TrimSpace(os.Getenv("GITHUB_API_URL")); s != "" {
+	if s, found := util.Getenv("GITHUB_API_URL"); found && s != "" {
 		u, err := url.Parse(s)
 		if err != nil {
 			return "", fmt.Errorf("invalid GITHUB_API_URL environment variable: %w", err)
@@ -83,7 +84,7 @@ func New(repo string) (*Client, error) {
 	}
 
 	// use GITHUB_TOKEN if define
-	if token := strings.TrimSpace(os.Getenv("GITHUB_TOKEN")); token != "" {
+	if token, found := util.Getenv("GITHUB_TOKEN"); found && token != "" {
 		c.baseHeader.Set("Authorization", fmt.Sprintf("token %s", token))
 	}
 
