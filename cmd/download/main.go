@@ -22,15 +22,16 @@ Download a release asset.
 
 Usage:
     github-release-download help
-    github-release-download <repo> <release-id> <filename> [--verbose]
+    github-release-download [<repo>] <release-id> <filename> [--verbose]
                             [--no-dry-run]
-    github-release-download <repo> latest <filename> [--verbose] [--no-dry-run]
-    github-release-download <repo> by-tag <tag>[@<target>] <filename> [--verbose]
-                            [--no-dry-run]
+    github-release-download [<repo>] latest <filename> [--verbose] [--no-dry-run]
+    github-release-download [<repo>] by-tag <tag>[@<target>] <filename>
+                            [--verbose] [--no-dry-run]
 
 Arguments:
     help                display help message.
-    <repo>              must be specified in the format "owner/repo".
+    <repo>              if the GITHUB_REPOSITORY environment variable is not
+                        defined, you must specify the target repository.
     <release-id>        dowload from the specified release. (greater than 0)
     <filename>          name of the asset to download.
     latest              download from the lastest release.
@@ -45,6 +46,7 @@ Options:
 
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
+    GITHUB_REPOSITORY   must be specified in the format "owner/repo".
 `)
 	exit(code)
 }

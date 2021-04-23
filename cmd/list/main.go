@@ -21,15 +21,17 @@ List releases.
 
 Usage:
     github-release-list help
-    github-release-list <repo> [--verbose] [--branch-exists] [--branch=<branch>]
-    github-release-list <repo> draft [--verbose] [--branch-exists]
+    github-release-list [<repo>] [--verbose] [--branch-exists]
                         [--branch=<branch>]
-    github-release-list <repo> prerelease [--verbose] [--branch-exists]
+    github-release-list [<repo>] draft [--verbose] [--branch-exists]
+                        [--branch=<branch>]
+    github-release-list [<repo>] prerelease [--verbose] [--branch-exists]
                         [--branch=<branch>]
 
 Arguments:
     help                display help message.
-    <repo>              must be specified in the format "owner/repo".
+    <repo>              if the GITHUB_REPOSITORY environment variable is not
+                        defined, you must specify the target repository.
     draft               lists only the draft releases.
     prelease            lists only the pre-releases.
 
@@ -42,6 +44,7 @@ Options:
 
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
+    GITHUB_REPOSITORY   must be specified in the format "owner/repo".
 `)
 	exit(code)
 }

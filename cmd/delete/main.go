@@ -22,14 +22,16 @@ Delete release.
 
 Usage:
     github-release-delete help
-    github-release-delete <repo> <release-id> [--verbose] [--no-dry-run]
-    github-release-delete <repo> no-branch [--verbose] [--no-dry-run]
-    github-release-delete <repo> by-tag <tag>[@<target>] [--verbose] [--no-dry-run]
-                          [--regex] [--posix] [--draft] [--prerelease]
+    github-release-delete [<repo>] <release-id> [--verbose] [--no-dry-run]
+    github-release-delete [<repo>] no-branch [--verbose] [--no-dry-run]
+    github-release-delete [<repo>] by-tag <tag>[@<target>] [--verbose]
+                          [--no-dry-run] [--regex] [--posix] [--draft]
+                          [--prerelease]
 
 Arguments:
     help                display help message.
-    <repo>              must be specified in the format "owner/repo".
+    <repo>              if the GITHUB_REPOSITORY environment variable is not
+                        defined, you must specify the target repository.
     <release-id>        delete a release with the specified id. (greater than 0)
     by-tag              delete a release with the specified tag.
     <tag>               specify an existing tag. (e.g. v1.0.0)
@@ -45,6 +47,7 @@ Options:
 
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
+    GITHUB_REPOSITORY   must be specified in the format "owner/repo".
 `)
 	exit(code)
 }

@@ -23,14 +23,15 @@ Create release and upload asset files.
 
 Usage:
     github-release-create help
-    github-release-create <repo> <tag>[@<target>] <filename>
+    github-release-create [<repo>] <tag>[@<target>] <filename>
            [--verbose] [--title=<title>] [--body=<body>]
            [--dir=<path/to/dir>] [--regex] [--posix]
            [--no-draft] [--no-prerelease] [--no-dry-run]
 
 Arguments:
     help                display help message.
-    <repo>              must be specified in the format "owner/repo".
+    <repo>              if the GITHUB_REPOSITORY environment variable is not
+                        defined, you must specify the target repository.
     <tag>               specify an existing tag, or create a new tag.
                         (e.g. v1.0.0)
     <target>            specify a branch, or commish. (e.g. master)
@@ -49,6 +50,7 @@ Options:
 
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
+    GITHUB_REPOSITORY   must be specified in the format "owner/repo".
 `)
 	exit(code)
 }

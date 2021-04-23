@@ -25,7 +25,15 @@ func Start(startfn StartFunc, usagefn UsageFunc) int {
 	go func() {
 		defer cancel()
 		args := os.Args[1:]
-		if len(args) == 0 || args[0] == "help" {
+		if len(args) > 0 && args[0] == "help" {
+			usagefn(0)
+		}
+
+		// use GITHUB_REPOSITORY envvar as first argument
+		if v, found := util.Getenv("GITHUB_REPOSITORY"); found && v != "" {
+			args = append([]string{v}, args...)
+		}
+		if len(args) == 0 {
 			usagefn(0)
 		}
 
