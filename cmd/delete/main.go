@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"strings"
 
+	"github-release-admin/cmd"
 	"github-release-admin/delete"
 	"github-release-admin/getopt"
 	"github-release-admin/github"
@@ -14,7 +16,7 @@ import (
 
 var exit = util.Exit
 
-func Usage(code int) {
+func usage(code int) {
 	log.Print(`
 Delete release.
 
@@ -57,7 +59,7 @@ type NoBranchOption struct {
 
 func (o *NoBranchOption) SetArg(arg string) bool {
 	log.Error("invalid arguments")
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -71,7 +73,7 @@ func (o *NoBranchOption) SetFlag(arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 
 	return true
@@ -79,7 +81,7 @@ func (o *NoBranchOption) SetFlag(arg string) bool {
 
 func (o *NoBranchOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -105,11 +107,11 @@ func (o *TagOption) SetArg(arg string) bool {
 			}
 		}
 		log.Error("invalid <tag>[@<target>] arguments")
-		Usage(1)
+		usage(1)
 	}
 
 	log.Error("invalid arguments")
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -135,7 +137,7 @@ func (o *TagOption) SetFlag(arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 
 	return true
@@ -143,7 +145,7 @@ func (o *TagOption) SetFlag(arg string) bool {
 
 func (o *TagOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -162,12 +164,12 @@ func (o *ReleaseOption) SetArg(arg string) bool {
 		}
 
 		log.Error("invalid <release-id> argument")
-		Usage(1)
+		usage(1)
 	}
 
 	// <release-id> has already passed
 	log.Error("invalid arguments")
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -181,7 +183,7 @@ func (o *ReleaseOption) SetFlag(arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 
 	return true
@@ -189,11 +191,11 @@ func (o *ReleaseOption) SetFlag(arg string) bool {
 
 func (o *ReleaseOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
-	Usage(1)
+	usage(1)
 	return true
 }
 
-func Run(ghc *github.Client, args []string) {
+func start(ctx context.Context, ghc *github.Client, args []string) {
 	arg := ""
 	if len(args) > 0 {
 		arg = args[0]
@@ -216,7 +218,7 @@ func Run(ghc *github.Client, args []string) {
 		getopt.Parse(o, args[1:])
 		if o.TagName == "" {
 			log.Error("invalid arguments")
-			Usage(1)
+			usage(1)
 		} else if err := delete.ByTagName(ghc, &o.TagOption); err != nil {
 			log.Fatalf("failed to delete release: %v", err)
 		}
@@ -228,7 +230,7 @@ func Run(ghc *github.Client, args []string) {
 		getopt.Parse(o, args)
 		if o.ReleaseID == 0 {
 			log.Error("invalid arguments")
-			Usage(1)
+			usage(1)
 		} else if err := delete.Release(ghc, &o.ReleaseOption); err != nil {
 			log.Fatalf("failed to delete release: %v", err)
 		}
@@ -236,15 +238,5 @@ func Run(ghc *github.Client, args []string) {
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) == 0 || args[0] == "help" {
-		Usage(0)
-	}
-	ghc, err := github.New(args[0])
-	if err != nil {
-		log.Error(err)
-		Usage(1)
-	}
-
-	Run(ghc, args[1:])
+	os.Exit(cmd.Start(start, usage))
 }

@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"os"
 	"strconv"
 	"strings"
 
+	"github-release-admin/cmd"
 	"github-release-admin/download"
 	"github-release-admin/getopt"
 	"github-release-admin/github"
@@ -14,7 +16,7 @@ import (
 
 var exit = util.Exit
 
-func Usage(code int) {
+func usage(code int) {
 	log.Print(`
 Download a release asset.
 
@@ -64,7 +66,7 @@ func (o *Option) SetArg(arg string) bool {
 		}
 	}
 	log.Error("invalid argument")
-	Usage(1)
+	usage(1)
 	return false
 }
 
@@ -78,7 +80,7 @@ func (o *Option) SetFlag(arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 
 	return true
@@ -86,7 +88,7 @@ func (o *Option) SetFlag(arg string) bool {
 
 func (o *Option) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -118,7 +120,7 @@ func (o *TagOption) SetArg(arg string) bool {
 			}
 		}
 		log.Error("invalid arguments")
-		Usage(1)
+		usage(1)
 	}
 
 	return o.Option.SetArg(arg)
@@ -135,10 +137,10 @@ func (o *ReleaseOption) SetArg(arg string) bool {
 		v, err := strconv.ParseInt(arg, 10, 64)
 		if err != nil {
 			log.Error("invalid <release-id> argument %w", err)
-			Usage(1)
+			usage(1)
 		} else if v <= 0 {
 			log.Error("<release-id> must be greater than 0")
-			Usage(1)
+			usage(1)
 		}
 		o.ReleaseID = v
 		return true
@@ -147,7 +149,7 @@ func (o *ReleaseOption) SetArg(arg string) bool {
 	return o.Option.SetArg(arg)
 }
 
-func Run(ghc *github.Client, args []string) {
+func start(ctx context.Context, ghc *github.Client, args []string) {
 	arg := ""
 	if len(args) > 0 {
 		arg = args[0]
@@ -160,7 +162,7 @@ func Run(ghc *github.Client, args []string) {
 		getopt.Parse(o, args[1:])
 		if o.Filename == "" {
 			log.Error("invalid arguments")
-			Usage(1)
+			usage(1)
 		} else if err := download.Latest(
 			ghc, o.Filename, &o.Option.Option,
 		); err != nil {
@@ -173,7 +175,7 @@ func Run(ghc *github.Client, args []string) {
 		getopt.Parse(o, args[1:])
 		if o.Filename == "" || o.TagName == "" {
 			log.Error("invalid arguments")
-			Usage(1)
+			usage(1)
 		} else if err := download.ByTagName(
 			ghc, o.TagName, o.TargetCommitish, o.Filename, &o.Option.Option,
 		); err != nil {
@@ -186,7 +188,7 @@ func Run(ghc *github.Client, args []string) {
 		getopt.Parse(o, args[1:])
 		if o.Filename == "" || o.ReleaseID == 0 {
 			log.Error("invalid arguments")
-			Usage(1)
+			usage(1)
 		} else if err := download.Release(
 			ghc, int(o.ReleaseID), o.Filename, &o.Option.Option,
 		); err != nil {
@@ -196,15 +198,5 @@ func Run(ghc *github.Client, args []string) {
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) == 0 || args[0] == "help" {
-		Usage(0)
-	}
-	ghc, err := github.New(args[0])
-	if err != nil {
-		log.Error(err)
-		Usage(1)
-	}
-
-	Run(ghc, args[1:])
+	os.Exit(cmd.Start(start, usage))
 }

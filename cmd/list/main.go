@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 
+	"github-release-admin/cmd"
 	"github-release-admin/getopt"
 	"github-release-admin/github"
 	"github-release-admin/list"
@@ -13,7 +15,7 @@ import (
 
 var exit = util.Exit
 
-func Usage(code int) {
+func usage(code int) {
 	log.Print(`
 List releases.
 
@@ -50,7 +52,7 @@ type Option struct {
 
 func (o *Option) SetArg(arg string) bool {
 	log.Error("invalid arguments")
-	Usage(1)
+	usage(1)
 	return true
 }
 
@@ -64,7 +66,7 @@ func (o *Option) SetFlag(arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 	return true
 }
@@ -76,12 +78,12 @@ func (o *Option) SetKeyValue(k, v, arg string) bool {
 
 	default:
 		log.Errorf("unknown option %q", arg)
-		Usage(1)
+		usage(1)
 	}
 	return true
 }
 
-func Run(ghc *github.Client, args []string) {
+func start(ctx context.Context, ghc *github.Client, args []string) {
 	o := &Option{}
 	listfn := list.Releases
 	if len(args) > 0 {
@@ -111,15 +113,5 @@ func Run(ghc *github.Client, args []string) {
 }
 
 func main() {
-	args := os.Args[1:]
-	if len(args) == 0 || args[0] == "help" {
-		Usage(0)
-	}
-	ghc, err := github.New(args[0])
-	if err != nil {
-		log.Error(err)
-		Usage(1)
-	}
-
-	Run(ghc, args[1:])
+	os.Exit(cmd.Start(start, usage))
 }
