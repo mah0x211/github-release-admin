@@ -21,7 +21,6 @@ import (
 type Client struct {
 	ctx        context.Context
 	baseURL    string
-	uploadURL  string
 	baseHeader http.Header
 	Header     http.Header
 	Body       io.Reader
@@ -78,9 +77,8 @@ func New(ctx context.Context, repo string) (*Client, error) {
 	}
 
 	c := &Client{
-		ctx:       ctx,
-		baseURL:   baseURL + "/repos/" + repo,
-		uploadURL: "https://uploads.github.com/repos/" + repo + "/releases",
+		ctx:     ctx,
+		baseURL: baseURL + "/repos/" + repo,
 		baseHeader: http.Header{
 			"Accept": {"application/vnd.github.v3+json"},
 		},
@@ -176,13 +174,8 @@ func (c *Client) Delete(endpoint string) (*http.Response, error) {
 }
 
 func (c *Client) upload(method, endpoint string, body io.Reader, size int64, mime string) (*http.Response, error) {
-	u, err := resolveEndpoint(endpoint)
-	if err != nil {
-		return nil, err
-	}
-
 	c.Body = body
-	req, err := c.createRequest(method, c.uploadURL+u)
+	req, err := c.createRequest(method, endpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -339,10 +332,35 @@ type Release struct {
 	TagName         string  `json:"tag_name"`
 	TargetCommitish string  `json:"target_commitish"`
 	HtmlURL         string  `json:"html_url,omitempty"`
+	UploadURL       string  `json:"upload_url,omitempty"`
 	CreatedAt       string  `json:"created_at,omitempty"`
 	PublishedAt     string  `json:"published_at,omitempty"`
 	Author          Author  `json:"author,omitempty"`
 	Assets          []Asset `json:"assets,omitempty"`
+}
+
+var ReUploadURLSuffix = regexp.MustCompile("/assets[^/]*$")
+
+func (r *Release) UploadAsset(c *Client, name string, body io.Reader, size int64, mime string) error {
+	baseURL := ReUploadURLSuffix.ReplaceAllString(r.UploadURL, "")
+	endpoint := fmt.Sprintf("%s/assets?name=%s", baseURL, name)
+	rsp, err := c.upload("POST", endpoint, body, size, mime)
+	if err != nil {
+		return err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusCreated:
+		return nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return err
+	}
 }
 
 type ListRelease struct {
@@ -483,26 +501,6 @@ func (c *Client) DeleteRelease(id int) error {
 	}
 
 	return nil
-}
-
-func (c *Client) UploadAsset(id int, name string, body io.Reader, size int64, mime string) error {
-	rsp, err := c.PostUpload(fmt.Sprintf("/%d/assets?name=%s", id, name), body, size, mime)
-	if err != nil {
-		return err
-	}
-	defer rsp.Body.Close()
-
-	switch rsp.StatusCode {
-	case http.StatusCreated:
-		return nil
-
-	default:
-		b, err := httputil.DumpResponse(rsp, true)
-		if err == nil {
-			err = fmt.Errorf("%s", b)
-		}
-		return err
-	}
 }
 
 func (c *Client) GetRelease(id int) (*Release, error) {

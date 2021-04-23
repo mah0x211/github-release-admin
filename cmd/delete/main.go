@@ -58,6 +58,7 @@ Options:
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
     GITHUB_REPOSITORY   must be specified in the format "owner/repo".
+    GITHUB_API_URL      API URL. (default: "https://api.github.com")
 `)
 	exit(code)
 }
