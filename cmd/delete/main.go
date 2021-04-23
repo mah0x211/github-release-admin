@@ -25,6 +25,8 @@ Usage:
     github-release-delete help
     github-release-delete [<repo>] <release-id> [--verbose] [--no-dry-run]
     github-release-delete [<repo>] unbranched [--verbose] [--no-dry-run]
+    github-release-delete [<repo>] draft [--verbose] [--no-dry-run]
+                          [--branch=<branch>]
     github-release-delete [<repo>] by-tag <tag>[@<target>] [--verbose]
                           [--no-dry-run] [--regex] [--posix] [--draft]
                           [--prerelease]
@@ -40,11 +42,13 @@ Arguments:
 
 Options:
     --verbose           display verbose output of the execution.
+	--no-dry-run        actually execute the request.
+    --branch=<branch>   delete only the releases associated with the
+                        specified branch.
     --regex             compile a <tag> as regular expressions.
     --posix             compile a <tag> as POSIX ERE (egrep).
-    --draft             delete only draft releases.
-    --prerelease        delete only prereleases.
-    --no-dry-run        actually execute the request.
+    --draft             delete draft releases.
+    --prerelease        delete prereleases.
 
 Environment Variables:
     GITHUB_TOKEN        required to access the private repository.
@@ -86,6 +90,44 @@ func (o *UnbranchedReleasesOption) SetFlag(arg string) bool {
 func (o *UnbranchedReleasesOption) SetKeyValue(k, v, arg string) bool {
 	log.Errorf("unknown option %q", arg)
 	usage(1)
+	return true
+}
+
+type DraftReleasesOption struct {
+	delete.DraftReleasesOption
+}
+
+func (o *DraftReleasesOption) SetArg(arg string) bool {
+	log.Error("invalid arguments")
+	usage(1)
+	return true
+}
+
+func (o *DraftReleasesOption) SetFlag(arg string) bool {
+	switch arg {
+	case "--verbose":
+		log.Verbose = true
+
+	case "--no-dry-run":
+		o.DryRun = false
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		usage(1)
+	}
+
+	return true
+}
+
+func (o *DraftReleasesOption) SetKeyValue(k, v, arg string) bool {
+	switch k {
+	case "--branch":
+		o.Branch = v
+
+	default:
+		log.Errorf("unknown option %q", arg)
+		usage(1)
+	}
 	return true
 }
 
@@ -214,6 +256,12 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		o.DryRun = true
 		getopt.Parse(o, args[1:])
 		list, err = delete.UnbranchedReleases(ghc, &o.UnbranchedReleasesOption)
+
+	case "draft":
+		o := &DraftReleasesOption{}
+		o.DryRun = true
+		getopt.Parse(o, args[1:])
+		list, err = delete.DraftReleases(ghc, &o.DraftReleasesOption)
 
 	case "by-tag":
 		o := &ReleasesByTagNameOption{}
