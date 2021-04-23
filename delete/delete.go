@@ -155,13 +155,14 @@ type ReleaseOption struct {
 	DryRun    bool
 }
 
-func Release(ghc *github.Client, o *ReleaseOption) error {
+func Release(ghc *github.Client, o *ReleaseOption) (*github.Release, error) {
 	v, err := ghc.GetRelease(int(o.ReleaseID))
 	if err != nil {
-		return err
+		return nil, err
 	} else if v == nil {
-		return ErrNotFound
+		return nil, nil
+	} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
+		return nil, err
 	}
-
-	return deleteRelease(ghc, v, o.DryRun)
+	return v, nil
 }

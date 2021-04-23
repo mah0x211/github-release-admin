@@ -205,7 +205,7 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		arg = args[0]
 	}
 
-	var list []*github.Release
+	list := []*github.Release{}
 	var err error
 
 	switch arg {
@@ -233,8 +233,10 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		if o.ReleaseID == 0 {
 			log.Error("invalid arguments")
 			usage(1)
-		} else if err := delete.Release(ghc, &o.ReleaseOption); err != nil {
+		} else if v, err := delete.Release(ghc, &o.ReleaseOption); err != nil {
 			log.Fatalf("failed to delete release: %v", err)
+		} else if v != nil {
+			list = append(list, v)
 		}
 	}
 
