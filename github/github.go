@@ -15,38 +15,18 @@ import (
 	"strings"
 
 	"github-release-admin/log"
-	"github-release-admin/util"
 )
 
 type Client struct {
 	ctx        context.Context
 	baseURL    string
+	repo       string
 	baseHeader http.Header
 	Header     http.Header
 	Body       io.Reader
 }
 
 const GITHUB_API_URL = "https://api.github.com"
-
-func getGitHubAPIURL() (string, error) {
-	// use GITHUB_API_URL if define
-	if s, found := util.Getenv("GITHUB_API_URL"); found && s != "" {
-		u, err := url.Parse(s)
-		if err != nil {
-			return "", fmt.Errorf("invalid GITHUB_API_URL environment variable: %w", err)
-		} else if u.Path == "/" {
-			u.Path = ""
-		}
-
-		if u.Scheme == "" || u.Host == "" || u.Path != "" ||
-			u.RawQuery != "" || u.Fragment != "" {
-			return "", fmt.Errorf("invalid GITHUB_API_URL environment variable: invalid url")
-		}
-		return u.String(), nil
-	}
-
-	return GITHUB_API_URL, nil
-}
 
 var ReOwnerName = regexp.MustCompile(`^[A-Za-z0-9-]+$`)
 var ReRepoName = regexp.MustCompile(`^[\w-][\w.-]*$`)
@@ -70,26 +50,43 @@ func New(ctx context.Context, repo string) (*Client, error) {
 		return nil, fmt.Errorf("invalid repo name %q", repo)
 	}
 
-	// use GITHUB_API_URL if define
-	baseURL, err := getGitHubAPIURL()
-	if err != nil {
-		return nil, err
-	}
-
 	c := &Client{
 		ctx:     ctx,
-		baseURL: baseURL + "/repos/" + repo,
+		repo:    repo,
+		baseURL: "https://api.github.com/repos/" + repo,
 		baseHeader: http.Header{
 			"Accept": {"application/vnd.github.v3+json"},
 		},
 	}
 
-	// use GITHUB_TOKEN if define
-	if token, found := util.Getenv("GITHUB_TOKEN"); found && token != "" {
-		c.baseHeader.Set("Authorization", fmt.Sprintf("token %s", token))
+	return c, nil
+}
+
+func (c *Client) SetURL(s string) error {
+	u, err := url.Parse(s)
+	if err != nil {
+		return fmt.Errorf("invalid url: %w", err)
+	} else if u.Path == "/" {
+		u.Path = ""
 	}
 
-	return c, nil
+	if u.Scheme == "" || u.Host == "" || u.Path != "" ||
+		u.RawQuery != "" || u.Fragment != "" {
+		return fmt.Errorf("invalid url")
+	}
+
+	u.Path = "/repos/" + c.repo
+	c.baseURL = u.String()
+
+	return nil
+}
+
+func (c *Client) SetToken(token string) {
+	if token == "" {
+		c.baseHeader.Del("Authorization")
+	} else {
+		c.baseHeader.Set("Authorization", fmt.Sprintf("token %s", token))
+	}
 }
 
 func (c *Client) log(req *http.Request, body bool) error {

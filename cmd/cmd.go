@@ -42,6 +42,17 @@ func Start(startfn StartFunc, usagefn UsageFunc) int {
 			log.Error(err)
 			usagefn(1)
 		}
+		// use GITHUB_TOKEN if define
+		if v, found := util.Getenv("GITHUB_TOKEN"); found {
+			ghc.SetToken(v)
+		}
+		// use GITHUB_API_URL if define
+		if v, found := util.Getenv("GITHUB_API_URL"); found {
+			if err = ghc.SetURL(v); err != nil {
+				log.Errorf("invalid GITHUB_API_URL environment variable: %v", err)
+				usagefn(1)
+			}
+		}
 
 		startfn(ctx, ghc, args[1:])
 	}()
