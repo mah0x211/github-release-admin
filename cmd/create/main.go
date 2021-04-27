@@ -6,13 +6,13 @@ import (
 	"regexp"
 	"strings"
 
-	"github-release-admin/cmd"
-	"github-release-admin/create"
-	"github-release-admin/getopt"
-	"github-release-admin/github"
-	"github-release-admin/log"
-	"github-release-admin/readdir"
-	"github-release-admin/util"
+	"github.com/mah0x211/github-release-admin/cmd"
+	"github.com/mah0x211/github-release-admin/create"
+	"github.com/mah0x211/github-release-admin/getopt"
+	"github.com/mah0x211/github-release-admin/github"
+	"github.com/mah0x211/github-release-admin/log"
+	"github.com/mah0x211/github-release-admin/readdir"
+	"github.com/mah0x211/github-release-admin/util"
 )
 
 var exit = util.Exit

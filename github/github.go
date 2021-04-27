@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github-release-admin/log"
+	"github.com/mah0x211/github-release-admin/log"
 )
 
 type Client struct {

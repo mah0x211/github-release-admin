@@ -3,8 +3,8 @@ package list
 import (
 	"errors"
 
-	"github-release-admin/github"
-	"github-release-admin/log"
+	"github.com/mah0x211/github-release-admin/github"
+	"github.com/mah0x211/github-release-admin/log"
 )
 
 type Option struct {

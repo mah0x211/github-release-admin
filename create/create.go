@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github-release-admin/github"
-	"github-release-admin/log"
-	"github-release-admin/readdir"
+	"github.com/mah0x211/github-release-admin/github"
+	"github.com/mah0x211/github-release-admin/log"
+	"github.com/mah0x211/github-release-admin/readdir"
 )
 
 type Option struct {

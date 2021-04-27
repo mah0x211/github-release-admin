@@ -1,4 +1,4 @@
-module github-release-admin
+module github.com/mah0x211/github-release-admin
 
 go 1.16
 
