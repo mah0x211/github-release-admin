@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"github-release-admin/util"
+	"github.com/mah0x211/github-release-admin/util"
 )
 
 var Stdout io.Writer = os.Stdout

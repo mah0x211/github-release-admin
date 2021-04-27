@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github-release-admin/github"
-	"github-release-admin/log"
-	"github-release-admin/util"
+	"github.com/mah0x211/github-release-admin/github"
+	"github.com/mah0x211/github-release-admin/log"
+	"github.com/mah0x211/github-release-admin/util"
 )
 
 type StartFunc func(ctx context.Context, ghc *github.Client, args []string)
