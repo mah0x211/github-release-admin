@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -737,3 +738,24 @@ func (c *Client) FetchCommitRef(page, itemsPerPage int, sha string, fn FetchComm
 	return nil
 }
 
+func (c *Client) ListBranchesOfCommit(s string, branchesPerPage, commitsPerPage int) ([]*Branch, error) {
+	eof := fmt.Errorf("end of fetch")
+	list := []*Branch{}
+
+	if err := c.FetchBranch(1, branchesPerPage, func(b *Branch, _ int) error {
+		if err := c.FetchCommitRef(1, commitsPerPage, b.Name, func(v *CommitRef, _ int) error {
+			if v.SHA == s {
+				list = append(list, b)
+				return eof
+			}
+			return nil
+		}); err != nil && !errors.Is(eof, err) {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return list, nil
+}
