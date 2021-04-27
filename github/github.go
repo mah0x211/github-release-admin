@@ -360,7 +360,7 @@ func (r *Release) UploadAsset(c *Client, name string, body io.Reader, size int64
 	}
 }
 
-type ListRelease struct {
+type ListReleases struct {
 	NextPage int
 	Releases []*Release
 }
@@ -383,7 +383,7 @@ func (c *Client) getNextPage(link string) (int, error) {
 	}
 }
 
-func (c *Client) ListReleases(nitem, page int) (*ListRelease, error) {
+func (c *Client) ListReleases(nitem, page int) (*ListReleases, error) {
 	rsp, err := c.Get(fmt.Sprintf("/releases?per_page=%d&page=%d", nitem, page))
 	if err != nil {
 		return nil, err
@@ -395,7 +395,7 @@ func (c *Client) ListReleases(nitem, page int) (*ListRelease, error) {
 		return nil, nil
 
 	case http.StatusOK:
-		list := &ListRelease{}
+		list := &ListReleases{}
 		if err = json.NewDecoder(rsp.Body).Decode(&list.Releases); err != nil {
 			return nil, err
 		}
