@@ -51,7 +51,7 @@ func upload(ghc *github.Client, v *github.Release, pathname string, o *Option) e
 	return nil
 }
 
-func Release(ghc *github.Client, o *Option, r *readdir.Reader, assets []string) error {
+func Release(ghc *github.Client, assets []string, r *readdir.Reader, o *Option) error {
 	if len(assets) == 0 {
 		return nil
 	}
