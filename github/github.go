@@ -245,38 +245,6 @@ func (c *Client) DownloadAsset(id int, pathname string) error {
 	}
 }
 
-type Branch struct {
-	Name      string `json:"name"`
-	Protected bool   `json:"protected"`
-}
-
-func (c *Client) GetBranch(name string) (*Branch, error) {
-	rsp, err := c.Get(fmt.Sprintf("/branches/%s", name))
-	if err != nil {
-		return nil, err
-	}
-	defer rsp.Body.Close()
-
-	switch rsp.StatusCode {
-	case http.StatusOK:
-		branch := &Branch{}
-		if err := json.NewDecoder(rsp.Body).Decode(&branch); err != nil {
-			return nil, err
-		}
-		return branch, nil
-
-	case http.StatusNotFound:
-		return nil, nil
-
-	default:
-		b, err := httputil.DumpResponse(rsp, true)
-		if err == nil {
-			err = fmt.Errorf("%s", b)
-		}
-		return nil, err
-	}
-}
-
 func (c *Client) DeleteTag(tag string) error {
 	rsp, err := c.Delete(fmt.Sprintf("/git/refs/tags/%s", tag))
 	if err != nil {
@@ -580,3 +548,77 @@ func (c *Client) GetReleaseLatest() (*Release, error) {
 		return nil, err
 	}
 }
+
+type Branch struct {
+	Name      string `json:"name"`
+	Protected bool   `json:"protected"`
+}
+
+func (c *Client) GetBranch(name string) (*Branch, error) {
+	rsp, err := c.Get(fmt.Sprintf("/branches/%s", name))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		branch := &Branch{}
+		if err := json.NewDecoder(rsp.Body).Decode(&branch); err != nil {
+			return nil, err
+		}
+		return branch, nil
+
+	case http.StatusNotFound:
+		return nil, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
+type ListBranches struct {
+	NextPage int
+	Branches []*Branch
+}
+
+func (c *Client) ListBranches(nitem, page int) (*ListBranches, error) {
+	rsp, err := c.Get(fmt.Sprintf("/branches?per_page=%d&page=%d", nitem, page))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		list := &ListBranches{}
+		if err := json.NewDecoder(rsp.Body).Decode(&list.Branches); err != nil {
+			return nil, err
+		}
+
+		for _, v := range rsp.Header.Values("Link") {
+			if page, err = c.getNextPage(v); err != nil {
+				log.Errorf("invalid Link header: %v", err)
+			} else {
+				list.NextPage = page
+			}
+		}
+
+		return list, nil
+
+	case http.StatusNotFound:
+		return nil, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
