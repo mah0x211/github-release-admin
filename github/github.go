@@ -648,3 +648,66 @@ func (c *Client) FetchBranch(page, itemsPerPage int, fn FetchBranchCallback) err
 	return nil
 }
 
+type CommitAuthor struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Date  string `json:"date"`
+}
+
+type Commit struct {
+	URL          string       `json:"url"`
+	CommitAuthor CommitAuthor `json:"author"`
+	Committer    CommitAuthor `json:"committer"`
+	Message      string       `json:"message"`
+}
+
+type CommitRef struct {
+	URL       string `json:"url"`
+	SHA       string `json:"sha"`
+	HtmlURL   string `json:"html_url"`
+	Commit    Commit `json:"commit"`
+	Author    Author `json:"author"`
+	Committer Author `json:"committer"`
+}
+
+type ListCommitRefs struct {
+	NextPage   int
+	CommitRefs []*CommitRef
+}
+
+func (c *Client) ListCommitRefs(nitem, page int, sha string) (*ListCommitRefs, error) {
+	rsp, err := c.Get(fmt.Sprintf("/commits?per_page=%d&page=%d&sha=%s", nitem, page, sha))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		list := &ListCommitRefs{}
+		if err := json.NewDecoder(rsp.Body).Decode(&list.CommitRefs); err != nil {
+			return nil, err
+		}
+
+		for _, v := range rsp.Header.Values("Link") {
+			if page, err = c.getNextPage(v); err != nil {
+				log.Errorf("invalid Link header: %v", err)
+			} else {
+				list.NextPage = page
+			}
+		}
+
+		return list, nil
+
+	case http.StatusNotFound:
+		return nil, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
