@@ -711,3 +711,29 @@ func (c *Client) ListCommitRefs(nitem, page int, sha string) (*ListCommitRefs, e
 	}
 }
 
+type FetchCommitRefCallback func(v *CommitRef, page int) error
+
+func (c *Client) FetchCommitRef(page, itemsPerPage int, sha string, fn FetchCommitRefCallback) error {
+	if page < 1 {
+		page = 1
+	}
+	if itemsPerPage < 1 {
+		itemsPerPage = 20
+	}
+
+	for page > 0 {
+		list, err := c.ListCommitRefs(itemsPerPage, page, sha)
+		if err != nil {
+			return err
+		}
+		for _, v := range list.CommitRefs {
+			if err = fn(v, page); err != nil {
+				return err
+			}
+		}
+		page = list.NextPage
+	}
+
+	return nil
+}
+
