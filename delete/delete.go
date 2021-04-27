@@ -24,7 +24,22 @@ func deleteRelease(ghc *github.Client, v *github.Release, dryrun bool) error {
 	return ghc.DeleteRelease(v.ID)
 }
 
-var ErrNotFound = fmt.Errorf("not found")
+var reHex = regexp.MustCompile("^[0-9a-fA-F]+$")
+
+func IsHexSHA1(s string) bool {
+	return len(s) == 40 && reHex.MatchString(s)
+}
+
+func getBranches(ghc *github.Client, targetCommitish string) ([]*github.Branch, error) {
+	if IsHexSHA1(targetCommitish) {
+		return ghc.ListBranchesOfCommit(targetCommitish, 20, 20)
+	} else if v, err := ghc.GetBranch(targetCommitish); err != nil {
+		return nil, err
+	} else if v != nil {
+		return []*github.Branch{v}, nil
+	}
+	return nil, nil
+}
 
 type UnbranchedReleasesOption struct {
 	ItemsPerPage int
@@ -34,10 +49,9 @@ type UnbranchedReleasesOption struct {
 func UnbranchedReleases(ghc *github.Client, o *UnbranchedReleasesOption) ([]*github.Release, error) {
 	list := []*github.Release{}
 	if err := ghc.FetchRelease(1, o.ItemsPerPage, func(v *github.Release, _ int) error {
-		if b, err := ghc.GetBranch(v.TargetCommitish); err != nil {
+		if list, err := getBranches(ghc, v.TargetCommitish); err != nil {
 			return err
-		} else if b != nil {
-			// branch exists
+		} else if len(list) > 0 {
 			log.Debug("ignore the release associated with the branch: %d", v.ID)
 			return nil
 		} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
