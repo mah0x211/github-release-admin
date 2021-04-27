@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -245,38 +246,6 @@ func (c *Client) DownloadAsset(id int, pathname string) error {
 	}
 }
 
-type Branch struct {
-	Name      string `json:"name"`
-	Protected bool   `json:"protected"`
-}
-
-func (c *Client) GetBranch(name string) (*Branch, error) {
-	rsp, err := c.Get(fmt.Sprintf("/branches/%s", name))
-	if err != nil {
-		return nil, err
-	}
-	defer rsp.Body.Close()
-
-	switch rsp.StatusCode {
-	case http.StatusOK:
-		branch := &Branch{}
-		if err := json.NewDecoder(rsp.Body).Decode(&branch); err != nil {
-			return nil, err
-		}
-		return branch, nil
-
-	case http.StatusNotFound:
-		return nil, nil
-
-	default:
-		b, err := httputil.DumpResponse(rsp, true)
-		if err == nil {
-			err = fmt.Errorf("%s", b)
-		}
-		return nil, err
-	}
-}
-
 func (c *Client) DeleteTag(tag string) error {
 	rsp, err := c.Delete(fmt.Sprintf("/git/refs/tags/%s", tag))
 	if err != nil {
@@ -360,7 +329,7 @@ func (r *Release) UploadAsset(c *Client, name string, body io.Reader, size int64
 	}
 }
 
-type ListRelease struct {
+type ListReleases struct {
 	NextPage int
 	Releases []*Release
 }
@@ -383,7 +352,7 @@ func (c *Client) getNextPage(link string) (int, error) {
 	}
 }
 
-func (c *Client) ListReleases(nitem, page int) (*ListRelease, error) {
+func (c *Client) ListReleases(nitem, page int) (*ListReleases, error) {
 	rsp, err := c.Get(fmt.Sprintf("/releases?per_page=%d&page=%d", nitem, page))
 	if err != nil {
 		return nil, err
@@ -395,7 +364,7 @@ func (c *Client) ListReleases(nitem, page int) (*ListRelease, error) {
 		return nil, nil
 
 	case http.StatusOK:
-		list := &ListRelease{}
+		list := &ListReleases{}
 		if err = json.NewDecoder(rsp.Body).Decode(&list.Releases); err != nil {
 			return nil, err
 		}
@@ -579,4 +548,214 @@ func (c *Client) GetReleaseLatest() (*Release, error) {
 		}
 		return nil, err
 	}
+}
+
+type Branch struct {
+	Name      string `json:"name"`
+	Protected bool   `json:"protected"`
+}
+
+func (c *Client) GetBranch(name string) (*Branch, error) {
+	rsp, err := c.Get(fmt.Sprintf("/branches/%s", name))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		branch := &Branch{}
+		if err := json.NewDecoder(rsp.Body).Decode(&branch); err != nil {
+			return nil, err
+		}
+		return branch, nil
+
+	case http.StatusNotFound:
+		return nil, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
+type ListBranches struct {
+	NextPage int
+	Branches []*Branch
+}
+
+func (c *Client) ListBranches(nitem, page int) (*ListBranches, error) {
+	rsp, err := c.Get(fmt.Sprintf("/branches?per_page=%d&page=%d", nitem, page))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		list := &ListBranches{}
+		if err := json.NewDecoder(rsp.Body).Decode(&list.Branches); err != nil {
+			return nil, err
+		}
+
+		for _, v := range rsp.Header.Values("Link") {
+			if page, err = c.getNextPage(v); err != nil {
+				log.Errorf("invalid Link header: %v", err)
+			} else {
+				list.NextPage = page
+			}
+		}
+
+		return list, nil
+
+	case http.StatusNotFound:
+		return nil, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
+type FetchBranchCallback func(v *Branch, page int) error
+
+func (c *Client) FetchBranch(page, itemsPerPage int, fn FetchBranchCallback) error {
+	if page < 1 {
+		page = 1
+	}
+	if itemsPerPage < 1 {
+		itemsPerPage = 20
+	}
+
+	for page > 0 {
+		list, err := c.ListBranches(itemsPerPage, page)
+		if err != nil {
+			return err
+		}
+		for _, v := range list.Branches {
+			if err = fn(v, page); err != nil {
+				return err
+			}
+		}
+		page = list.NextPage
+	}
+
+	return nil
+}
+
+type CommitAuthor struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Date  string `json:"date"`
+}
+
+type Commit struct {
+	URL          string       `json:"url"`
+	CommitAuthor CommitAuthor `json:"author"`
+	Committer    CommitAuthor `json:"committer"`
+	Message      string       `json:"message"`
+}
+
+type CommitRef struct {
+	URL       string `json:"url"`
+	SHA       string `json:"sha"`
+	HtmlURL   string `json:"html_url"`
+	Commit    Commit `json:"commit"`
+	Author    Author `json:"author"`
+	Committer Author `json:"committer"`
+}
+
+type ListCommitRefs struct {
+	NextPage   int
+	CommitRefs []*CommitRef
+}
+
+func (c *Client) ListCommitRefs(nitem, page int, sha string) (*ListCommitRefs, error) {
+	rsp, err := c.Get(fmt.Sprintf("/commits?per_page=%d&page=%d&sha=%s", nitem, page, sha))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		list := &ListCommitRefs{}
+		if err := json.NewDecoder(rsp.Body).Decode(&list.CommitRefs); err != nil {
+			return nil, err
+		}
+
+		for _, v := range rsp.Header.Values("Link") {
+			if page, err = c.getNextPage(v); err != nil {
+				log.Errorf("invalid Link header: %v", err)
+			} else {
+				list.NextPage = page
+			}
+		}
+
+		return list, nil
+
+	case http.StatusNotFound:
+		return nil, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
+type FetchCommitRefCallback func(v *CommitRef, page int) error
+
+func (c *Client) FetchCommitRef(page, itemsPerPage int, sha string, fn FetchCommitRefCallback) error {
+	if page < 1 {
+		page = 1
+	}
+	if itemsPerPage < 1 {
+		itemsPerPage = 20
+	}
+
+	for page > 0 {
+		list, err := c.ListCommitRefs(itemsPerPage, page, sha)
+		if err != nil {
+			return err
+		}
+		for _, v := range list.CommitRefs {
+			if err = fn(v, page); err != nil {
+				return err
+			}
+		}
+		page = list.NextPage
+	}
+
+	return nil
+}
+
+func (c *Client) ListBranchesOfCommit(s string, branchesPerPage, commitsPerPage int) ([]*Branch, error) {
+	eof := fmt.Errorf("end of fetch")
+	list := []*Branch{}
+
+	if err := c.FetchBranch(1, branchesPerPage, func(b *Branch, _ int) error {
+		if err := c.FetchCommitRef(1, commitsPerPage, b.Name, func(v *CommitRef, _ int) error {
+			if v.SHA == s {
+				list = append(list, b)
+				return eof
+			}
+			return nil
+		}); err != nil && !errors.Is(eof, err) {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return list, nil
 }
