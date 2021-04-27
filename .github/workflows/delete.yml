@@ -32,9 +32,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           build/github-release-delete draft --verbose --no-dry-run
-      # -
-      #   name: Delete Unbranched Releases
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     build/github-release-delete unbranched --verbose --no-dry-run
+      -
+        name: Delete Unbranched Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          build/github-release-delete unbranched --verbose --no-dry-run
