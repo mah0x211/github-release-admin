@@ -183,7 +183,7 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		return
 	}
 
-	if err = create.Release(ghc, &o.Option, r, assets); err != nil {
+	if err = create.Release(ghc, assets, &o.Option); err != nil {
 		log.Fatalf("failed to create release: %v", err)
 	}
 }
