@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"os"
-	"regexp"
 	"strings"
 
 	"github.com/mah0x211/github-release-admin/cmd"
@@ -159,22 +158,20 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 		usage(1)
 	}
 
-	var re *regexp.Regexp
-	var err error
+	// read asset files
+	asa := readdir.AsPlain
 	if o.AsPosix {
-		re, err = regexp.CompilePOSIX(o.Filename)
+		asa = readdir.AsPosix
 	} else if o.AsRegex {
-		re, err = regexp.Compile(o.Filename)
+		asa = readdir.AsRegex
 	}
+	r, err := readdir.New(o.Dirname, o.Filename, asa)
 	if err != nil {
 		log.Errorf(
 			"<filename> cannot be compiled as regular expressions: %v", err,
 		)
 		usage(1)
 	}
-
-	// read asset files
-	r := readdir.New(o.Dirname, o.Filename, re)
 	assets, err := r.Read()
 	if err != nil {
 		log.Fatalf("failed to readdir(): %v", err)
