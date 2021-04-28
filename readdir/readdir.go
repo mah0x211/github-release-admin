@@ -7,26 +7,45 @@ import (
 )
 
 type Reader struct {
-	dirname string
-	pattern string
-	re      *regexp.Regexp
+	dirname  string
+	filename string
+	re       *regexp.Regexp
 }
 
-func New(dirname, pattern string, re *regexp.Regexp) *Reader {
-	return &Reader{
-		dirname: filepath.Clean(dirname),
-		pattern: pattern,
-		re:      re,
+type FilenameAs int
+
+const (
+	AsPlain FilenameAs = 0x0
+	AsRegex FilenameAs = 0x1
+	AsPosix FilenameAs = 0x2
+)
+
+func New(dirname, filename string, asa FilenameAs) (*Reader, error) {
+	var re *regexp.Regexp
+	var err error
+	if asa&AsPosix != 0 {
+		re, err = regexp.CompilePOSIX(filename)
+	} else if asa&AsRegex != 0 {
+		re, err = regexp.Compile(filename)
 	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &Reader{
+		dirname:  filepath.Clean(dirname),
+		filename: filename,
+		re:       re,
+	}, nil
 }
 
 func (r *Reader) String() string {
-	return r.dirname + "/" + r.pattern
+	return r.dirname + "/" + r.filename
 }
 
 func (r *Reader) MatchString(s string) bool {
 	if r.re == nil {
-		return r.pattern == s
+		return r.filename == s
 	}
 	return r.re.MatchString(s)
 }
