@@ -360,9 +360,6 @@ func (c *Client) ListReleases(nitem, page int) (*ListReleases, error) {
 	defer rsp.Body.Close()
 
 	switch rsp.StatusCode {
-	case http.StatusNotFound:
-		return nil, nil
-
 	case http.StatusOK:
 		list := &ListReleases{}
 		if err = json.NewDecoder(rsp.Body).Decode(&list.Releases); err != nil {
@@ -378,6 +375,9 @@ func (c *Client) ListReleases(nitem, page int) (*ListReleases, error) {
 		}
 
 		return list, nil
+
+	case http.StatusNotFound:
+		return &ListReleases{}, nil
 
 	default:
 		b, err := httputil.DumpResponse(rsp, true)
@@ -612,7 +612,7 @@ func (c *Client) ListBranches(nitem, page int) (*ListBranches, error) {
 		return list, nil
 
 	case http.StatusNotFound:
-		return nil, nil
+		return &ListBranches{}, nil
 
 	default:
 		b, err := httputil.DumpResponse(rsp, true)
@@ -701,7 +701,7 @@ func (c *Client) ListCommitRefs(nitem, page int, sha string) (*ListCommitRefs, e
 		return list, nil
 
 	case http.StatusNotFound:
-		return nil, nil
+		return &ListCommitRefs{}, nil
 
 	default:
 		b, err := httputil.DumpResponse(rsp, true)
