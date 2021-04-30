@@ -188,7 +188,7 @@ func start(ctx context.Context, ghc *github.Client, args []string) {
 	default:
 		o := &ReleaseOption{}
 		o.DryRun = true
-		getopt.Parse(o, args[1:])
+		getopt.Parse(o, args)
 		if o.Filename == "" || o.ReleaseID == 0 {
 			log.Error("invalid arguments")
 			usage(1)
