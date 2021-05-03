@@ -352,8 +352,8 @@ func (c *Client) getNextPage(link string) (int, error) {
 	}
 }
 
-func (c *Client) ListReleases(nitem, page int) (*ListReleases, error) {
-	rsp, err := c.Get(fmt.Sprintf("/releases?per_page=%d&page=%d", nitem, page))
+func (c *Client) ListReleases(page, perPage int) (*ListReleases, error) {
+	rsp, err := c.Get(fmt.Sprintf("/releases?per_page=%d&page=%d", perPage, page))
 	if err != nil {
 		return nil, err
 	}
@@ -399,7 +399,7 @@ func (c *Client) FetchRelease(page, itemsPerPage int, fn FetchReleaseCallback) e
 	}
 
 	for page > 0 {
-		list, err := c.ListReleases(itemsPerPage, page)
+		list, err := c.ListReleases(page, itemsPerPage)
 		if err != nil {
 			return err
 		}
