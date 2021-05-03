@@ -587,8 +587,8 @@ type ListBranches struct {
 	Branches []*Branch
 }
 
-func (c *Client) ListBranches(nitem, page int) (*ListBranches, error) {
-	rsp, err := c.Get(fmt.Sprintf("/branches?per_page=%d&page=%d", nitem, page))
+func (c *Client) ListBranches(page, perPage int) (*ListBranches, error) {
+	rsp, err := c.Get(fmt.Sprintf("/branches?per_page=%d&page=%d", perPage, page))
 	if err != nil {
 		return nil, err
 	}
@@ -634,7 +634,7 @@ func (c *Client) FetchBranch(page, itemsPerPage int, fn FetchBranchCallback) err
 	}
 
 	for page > 0 {
-		list, err := c.ListBranches(itemsPerPage, page)
+		list, err := c.ListBranches(page, itemsPerPage)
 		if err != nil {
 			return err
 		}
