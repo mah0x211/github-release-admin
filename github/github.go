@@ -676,8 +676,8 @@ type ListCommitRefs struct {
 	CommitRefs []*CommitRef
 }
 
-func (c *Client) ListCommitRefs(nitem, page int, sha string) (*ListCommitRefs, error) {
-	rsp, err := c.Get(fmt.Sprintf("/commits?per_page=%d&page=%d&sha=%s", nitem, page, sha))
+func (c *Client) ListCommitRefs(sha string, page, perPage int) (*ListCommitRefs, error) {
+	rsp, err := c.Get(fmt.Sprintf("/commits?per_page=%d&page=%d&sha=%s", perPage, page, sha))
 	if err != nil {
 		return nil, err
 	}
@@ -723,7 +723,7 @@ func (c *Client) FetchCommitRef(page, itemsPerPage int, sha string, fn FetchComm
 	}
 
 	for page > 0 {
-		list, err := c.ListCommitRefs(itemsPerPage, page, sha)
+		list, err := c.ListCommitRefs(sha, page, itemsPerPage)
 		if err != nil {
 			return err
 		}
