@@ -9,6 +9,17 @@ import (
 	"github.com/mah0x211/github-release-admin/log"
 )
 
+func deleteTag(ghc *github.Client, v *github.Release, dryrun bool) error {
+	if log.Verbose {
+		log.Debug("delete tag %s", v.TagName)
+	}
+
+	if dryrun {
+		return nil
+	}
+	return ghc.DeleteTag(v.TagName)
+}
+
 func deleteRelease(ghc *github.Client, v *github.Release, dryrun bool) error {
 	if log.Verbose {
 		b, err := json.MarshalIndent(v, "", "  ")
@@ -58,7 +69,7 @@ func UnbranchedReleases(ghc *github.Client, o *UnbranchedReleasesOption) ([]*git
 			return err
 		}
 		list = append(list, v)
-		return nil
+		return deleteTag(ghc, v, o.DryRun)
 	}); err != nil {
 		return list, err
 	}
@@ -85,7 +96,7 @@ func DraftReleases(ghc *github.Client, o *DraftReleasesOption) ([]*github.Releas
 			return err
 		}
 		list = append(list, v)
-		return nil
+		return deleteTag(ghc, v, o.DryRun)
 	}); err != nil {
 		return list, err
 	}
@@ -112,7 +123,7 @@ func PreReleases(ghc *github.Client, o *PreReleasesOption) ([]*github.Release, e
 			return err
 		}
 		list = append(list, v)
-		return nil
+		return deleteTag(ghc, v, o.DryRun)
 	}); err != nil {
 		return list, err
 	}
@@ -160,7 +171,7 @@ func ReleasesByTagName(ghc *github.Client, o *ReleasesByTagNameOption) ([]*githu
 		} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
 			return list, err
 		}
-		return append(list, v), nil
+		return append(list, v), deleteTag(ghc, v, o.DryRun)
 	}
 
 	var re *regexp.Regexp
@@ -183,7 +194,7 @@ func ReleasesByTagName(ghc *github.Client, o *ReleasesByTagNameOption) ([]*githu
 			return err
 		}
 		list = append(list, v)
-		return nil
+		return deleteTag(ghc, v, o.DryRun)
 	}); err != nil {
 		return list, err
 	}
@@ -205,5 +216,5 @@ func Release(ghc *github.Client, o *ReleaseOption) (*github.Release, error) {
 	} else if err = deleteRelease(ghc, v, o.DryRun); err != nil {
 		return nil, err
 	}
-	return v, nil
+	return v, deleteTag(ghc, v, o.DryRun)
 }
