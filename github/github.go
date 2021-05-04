@@ -714,16 +714,16 @@ func (c *Client) ListCommitRefs(sha string, page, perPage int) (*ListCommitRefs,
 
 type FetchCommitRefCallback func(v *CommitRef, page int) error
 
-func (c *Client) FetchCommitRef(page, itemsPerPage int, sha string, fn FetchCommitRefCallback) error {
+func (c *Client) FetchCommitRef(sha string, page, perPage int, fn FetchCommitRefCallback) error {
 	if page < 1 {
 		page = 1
 	}
-	if itemsPerPage < 1 {
-		itemsPerPage = 20
+	if perPage < 1 {
+		perPage = 20
 	}
 
 	for page > 0 {
-		list, err := c.ListCommitRefs(sha, page, itemsPerPage)
+		list, err := c.ListCommitRefs(sha, page, perPage)
 		if err != nil {
 			return err
 		}
@@ -743,7 +743,7 @@ func (c *Client) ListBranchesOfCommit(s string, branchesPerPage, commitsPerPage 
 	list := []*Branch{}
 
 	if err := c.FetchBranch(1, branchesPerPage, func(b *Branch, _ int) error {
-		if err := c.FetchCommitRef(1, commitsPerPage, b.Name, func(v *CommitRef, _ int) error {
+		if err := c.FetchCommitRef(b.Name, 1, commitsPerPage, func(v *CommitRef, _ int) error {
 			if v.SHA == s {
 				list = append(list, b)
 				return eof
