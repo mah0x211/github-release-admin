@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -786,20 +785,17 @@ func (c *Client) CompareTwoCommit(base, head string, page, perPage int) (*Compar
 	}
 }
 
-func (c *Client) ListBranchesOfCommit(s string, branchesPerPage, commitsPerPage int) ([]*Branch, error) {
-	eof := fmt.Errorf("end of fetch")
+func (c *Client) ListBranchesOfCommit(sha string, branchesPerPage, commitsPerPage int) ([]*Branch, error) {
 	list := []*Branch{}
 
 	if err := c.FetchBranch(1, branchesPerPage, func(b *Branch, _ int) error {
-		if err := c.FetchCommitRef(b.Name, 1, commitsPerPage, func(v *CommitRef, _ int) error {
-			if v.SHA == s {
-				list = append(list, b)
-				return eof
-			}
-			return nil
-		}); err != nil && !errors.Is(eof, err) {
+		cmp, err := c.CompareTwoCommit(b.Name, sha, 1, 1)
+		if err != nil {
 			return err
+		} else if cmp != nil && (cmp.Status == "behind" || cmp.Status == "identical") {
+			list = append(list, b)
 		}
+
 		return nil
 	}); err != nil {
 		return nil, err
