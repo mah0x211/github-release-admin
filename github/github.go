@@ -352,8 +352,8 @@ func (c *Client) getNextPage(link string) (int, error) {
 	}
 }
 
-func (c *Client) ListReleases(nitem, page int) (*ListReleases, error) {
-	rsp, err := c.Get(fmt.Sprintf("/releases?per_page=%d&page=%d", nitem, page))
+func (c *Client) ListReleases(page, perPage int) (*ListReleases, error) {
+	rsp, err := c.Get(fmt.Sprintf("/releases?per_page=%d&page=%d", perPage, page))
 	if err != nil {
 		return nil, err
 	}
@@ -390,16 +390,16 @@ func (c *Client) ListReleases(nitem, page int) (*ListReleases, error) {
 
 type FetchReleaseCallback func(v *Release, page int) error
 
-func (c *Client) FetchRelease(page, itemsPerPage int, fn FetchReleaseCallback) error {
+func (c *Client) FetchRelease(page, perPage int, fn FetchReleaseCallback) error {
 	if page < 1 {
 		page = 1
 	}
-	if itemsPerPage < 1 {
-		itemsPerPage = 20
+	if perPage < 1 {
+		perPage = 20
 	}
 
 	for page > 0 {
-		list, err := c.ListReleases(itemsPerPage, page)
+		list, err := c.ListReleases(page, perPage)
 		if err != nil {
 			return err
 		}
@@ -587,8 +587,8 @@ type ListBranches struct {
 	Branches []*Branch
 }
 
-func (c *Client) ListBranches(nitem, page int) (*ListBranches, error) {
-	rsp, err := c.Get(fmt.Sprintf("/branches?per_page=%d&page=%d", nitem, page))
+func (c *Client) ListBranches(page, perPage int) (*ListBranches, error) {
+	rsp, err := c.Get(fmt.Sprintf("/branches?per_page=%d&page=%d", perPage, page))
 	if err != nil {
 		return nil, err
 	}
@@ -625,16 +625,16 @@ func (c *Client) ListBranches(nitem, page int) (*ListBranches, error) {
 
 type FetchBranchCallback func(v *Branch, page int) error
 
-func (c *Client) FetchBranch(page, itemsPerPage int, fn FetchBranchCallback) error {
+func (c *Client) FetchBranch(page, perPage int, fn FetchBranchCallback) error {
 	if page < 1 {
 		page = 1
 	}
-	if itemsPerPage < 1 {
-		itemsPerPage = 20
+	if perPage < 1 {
+		perPage = 20
 	}
 
 	for page > 0 {
-		list, err := c.ListBranches(itemsPerPage, page)
+		list, err := c.ListBranches(page, perPage)
 		if err != nil {
 			return err
 		}
@@ -676,8 +676,8 @@ type ListCommitRefs struct {
 	CommitRefs []*CommitRef
 }
 
-func (c *Client) ListCommitRefs(nitem, page int, sha string) (*ListCommitRefs, error) {
-	rsp, err := c.Get(fmt.Sprintf("/commits?per_page=%d&page=%d&sha=%s", nitem, page, sha))
+func (c *Client) ListCommitRefs(sha string, page, perPage int) (*ListCommitRefs, error) {
+	rsp, err := c.Get(fmt.Sprintf("/commits?per_page=%d&page=%d&sha=%s", perPage, page, sha))
 	if err != nil {
 		return nil, err
 	}
@@ -714,16 +714,16 @@ func (c *Client) ListCommitRefs(nitem, page int, sha string) (*ListCommitRefs, e
 
 type FetchCommitRefCallback func(v *CommitRef, page int) error
 
-func (c *Client) FetchCommitRef(page, itemsPerPage int, sha string, fn FetchCommitRefCallback) error {
+func (c *Client) FetchCommitRef(sha string, page, perPage int, fn FetchCommitRefCallback) error {
 	if page < 1 {
 		page = 1
 	}
-	if itemsPerPage < 1 {
-		itemsPerPage = 20
+	if perPage < 1 {
+		perPage = 20
 	}
 
 	for page > 0 {
-		list, err := c.ListCommitRefs(itemsPerPage, page, sha)
+		list, err := c.ListCommitRefs(sha, page, perPage)
 		if err != nil {
 			return err
 		}
@@ -743,7 +743,7 @@ func (c *Client) ListBranchesOfCommit(s string, branchesPerPage, commitsPerPage 
 	list := []*Branch{}
 
 	if err := c.FetchBranch(1, branchesPerPage, func(b *Branch, _ int) error {
-		if err := c.FetchCommitRef(1, commitsPerPage, b.Name, func(v *CommitRef, _ int) error {
+		if err := c.FetchCommitRef(b.Name, 1, commitsPerPage, func(v *CommitRef, _ int) error {
 			if v.SHA == s {
 				list = append(list, b)
 				return eof
