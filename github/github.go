@@ -738,6 +738,54 @@ func (c *Client) FetchCommitRef(sha string, page, perPage int, fn FetchCommitRef
 	return nil
 }
 
+type CompareTwoCommit struct {
+	HtmlURL         string       `json:"html_url`
+	BaseCommit      CommitRef    `json:"base_commit"`
+	MergeBaseCommit CommitRef    `json:"merge_base_commit"`
+	Status          string       `json:"status"`
+	AheadBy         int          `json:"ahead_by"`
+	BehindBy        int          `json:"behind_by"`
+	TotalCommits    int          `json:"total_commits"`
+	Commits         []*CommitRef `json:"commits"`
+	NextPage        int
+}
+
+func (c *Client) CompareTwoCommit(base, head string, page, perPage int) (*CompareTwoCommit, error) {
+	rsp, err := c.Get(fmt.Sprintf("/compare/%s...%s?per_page=%d&page=%d", base, head, perPage, page))
+	if err != nil {
+		return nil, err
+	}
+	defer rsp.Body.Close()
+
+	switch rsp.StatusCode {
+	case http.StatusOK:
+		cmp := &CompareTwoCommit{}
+		if err := json.NewDecoder(rsp.Body).Decode(&cmp); err != nil {
+			return nil, err
+		}
+
+		for _, v := range rsp.Header.Values("Link") {
+			if page, err = c.getNextPage(v); err != nil {
+				log.Errorf("invalid Link header: %v", err)
+			} else {
+				cmp.NextPage = page
+			}
+		}
+
+		return cmp, nil
+
+	case http.StatusNotFound:
+		return nil, nil
+
+	default:
+		b, err := httputil.DumpResponse(rsp, true)
+		if err == nil {
+			err = fmt.Errorf("%s", b)
+		}
+		return nil, err
+	}
+}
+
 func (c *Client) ListBranchesOfCommit(s string, branchesPerPage, commitsPerPage int) ([]*Branch, error) {
 	eof := fmt.Errorf("end of fetch")
 	list := []*Branch{}
