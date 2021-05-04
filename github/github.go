@@ -625,16 +625,16 @@ func (c *Client) ListBranches(page, perPage int) (*ListBranches, error) {
 
 type FetchBranchCallback func(v *Branch, page int) error
 
-func (c *Client) FetchBranch(page, itemsPerPage int, fn FetchBranchCallback) error {
+func (c *Client) FetchBranch(page, perPage int, fn FetchBranchCallback) error {
 	if page < 1 {
 		page = 1
 	}
-	if itemsPerPage < 1 {
-		itemsPerPage = 20
+	if perPage < 1 {
+		perPage = 20
 	}
 
 	for page > 0 {
-		list, err := c.ListBranches(page, itemsPerPage)
+		list, err := c.ListBranches(page, perPage)
 		if err != nil {
 			return err
 		}
