@@ -390,16 +390,16 @@ func (c *Client) ListReleases(page, perPage int) (*ListReleases, error) {
 
 type FetchReleaseCallback func(v *Release, page int) error
 
-func (c *Client) FetchRelease(page, itemsPerPage int, fn FetchReleaseCallback) error {
+func (c *Client) FetchRelease(page, perPage int, fn FetchReleaseCallback) error {
 	if page < 1 {
 		page = 1
 	}
-	if itemsPerPage < 1 {
-		itemsPerPage = 20
+	if perPage < 1 {
+		perPage = 20
 	}
 
 	for page > 0 {
-		list, err := c.ListReleases(page, itemsPerPage)
+		list, err := c.ListReleases(page, perPage)
 		if err != nil {
 			return err
 		}
